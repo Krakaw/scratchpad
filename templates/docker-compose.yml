@@ -1,0 +1,97 @@
+version: "3.4"
+services:
+  web-build:
+    image: quay.io/bigneon/bn-web:master
+    env_file: .web.env
+    command: sh -c "/app/scripts/build_prod.sh 2>&1 | tee /logs/web.log"
+    environment:
+      - BUILD_OUTPUT=/output
+      - "BUILD_BRANCH=$WEB_BRANCH"
+    volumes:
+      - "$HOST_RELEASE_PATH/$API_BRANCH_URL/web:/output"
+      - "$HOST_RELEASE_PATH/$API_BRANCH_URL/logs:/logs"
+
+  api-initialise:
+    image: quay.io/bigneon/bn-api-releases:$API_BRANCH
+    env_file: .api.env
+    command: >
+      sh -c "bndb_cli create -c $$DATABASE_URL -e superuser@test.com -m 565512342 -p password -f \
+            && api-cli schedule-missing-domain-actions \
+            && api-cli update-customer-io-webhooks $$CUSTOMER_IO_SITE_ID $$CUSTOMER_IO_API_KEY"
+    networks:
+      - controller-network
+      - internal-network
+
+  api:
+    restart: unless-stopped
+    user: "${CUID}:${CGID}"
+    image: quay.io/bigneon/bn-api-releases:$API_BRANCH
+    env_file: .api.env
+    volumes:
+      - "$BUILD_DIR/build:/build"
+      - "$HOST_RELEASE_PATH/$API_BRANCH_URL/logs:/logs"
+    networks:
+      - controller-network
+      - internal-network
+    command: >
+      sh -c "bndb_cli migrate -c $$DATABASE_URL \
+             && api-cli schedule-missing-domain-actions \
+             && api-cli update-customer-io-webhooks $$CUSTOMER_IO_SITE_ID $$CUSTOMER_IO_API_KEY \
+             && server 2>&1 | tee -a /logs/api.log"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8088/status"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  bn-cube:
+    restart: unless-stopped
+    image: quay.io/bigneon/bn-cube:latest
+    env_file:
+      - .bn-cube.env
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:4000"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - controller-network
+      - internal-network
+
+  logs:
+    restart: unless-stopped
+    image: "mthenw/frontail"
+    volumes:
+      - "$HOST_RELEASE_PATH/$API_BRANCH_URL/logs:/logs"
+    networks:
+      - controller-network
+      - internal-network
+    command:
+      - --url-path=/logs
+      - --number=1000
+      - /logs/*
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9001/logs"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  sockets:
+    restart: unless-stopped
+    image: krakaw/sockets:latest
+    user: "${CUID}:${CGID}"
+    volumes:
+      - "$HOST_RELEASE_PATH/$API_BRANCH_URL/socks:/socks"
+    networks:
+      - internal-network
+    command: >
+      bash -c "/usr/bin/socat-to-tcp.sh /socks/api.sock api 8088 && /usr/bin/socat-to-tcp.sh /socks/bn-cube.sock bn-cube 4000 && /usr/bin/socat-to-tcp.sh /socks/logs.sock logs 9001 && sleep 3 && chmod 666 /socks/* && tail -f /dev/null"
+
+networks:
+  controller-network:
+    external: true
+  internal-network:
+    internal: true

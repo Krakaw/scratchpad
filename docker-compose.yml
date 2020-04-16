@@ -1,0 +1,43 @@
+version: "3.4"
+services:
+  controller:
+    build:
+      context: .
+    env_file:
+      - .controller.env
+    environment:
+      - "CUID=${CUID}"
+      - "CGID=${CGID}"
+    ports:
+      - 3456:3000
+    networks:
+      - controller-network
+    privileged: true
+    volumes:
+      - controller_base:/controller
+      - "$DOCKER_BIN:/usr/bin/docker"
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./_deployer:/app
+
+  nginx:
+    build:
+      context: ./images/nginx
+    env_file:
+      - .controller.env
+    ports:
+      - 8900:80
+    networks:
+      - controller-network
+    volumes:
+      - controller_base:/controller
+
+networks:
+  controller-network:
+
+volumes:
+  controller_base:
+    driver: local
+    driver_opts:
+      type: none
+      device: $PWD
+      o: bind

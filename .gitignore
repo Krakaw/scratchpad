@@ -1,0 +1,12 @@
+.idea/
+node_modules/
+.env
+.controller.env
+.mockchain.env
+.pg.env
+.api.env
+.bn-cube.env
+.web.env
+releases/
+logs/
+controller/data/

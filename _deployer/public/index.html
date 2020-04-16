@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+          integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <meta charset="UTF-8">
+    <title>Scratchpad</title>
+</head>
+<body>
+<header>
+
+    <div class="navbar navbar-dark bg-dark shadow-sm">
+        <div class="d-flex justify-content-between">
+            <a href="#" class="navbar-brand d-flex align-items-center">
+                <img style="width: 45px; height: 45px;" src="https://www.bigneon.com/images/bn-logo.png" alt="Logo">
+                &nbsp;
+                <strong>Big Neon Scratchpad</strong>
+            </a>
+
+        </div>
+    </div>
+</header>
+<br>
+<div id="app" class="container-fluid">
+    <div v-if="loading" class="loader">
+        <img class="lds-heart"
+             style="width: 250px; height: 250px;"
+             src="https://www.bigneon.com/images/bn-logo.png"
+             alt="Logo">
+    </div>
+    <!-- Main content table -->
+    <div class="row">
+        <div class="col-sm-12">
+            <table class="table table-striped">
+                <thead>
+                <tr>
+                    <th>Status</th>
+                    <th scope="col">API Branch</th>
+                    <th scope="col">Links</th>
+                    <th>Deployed</th>
+                    <th scope="col">Web Branch</th>
+
+                    <th scope="col">Created</th>
+                    <th scope="col">&nbsp;</th>
+                </tr>
+                </thead>
+                <tbody>
+                <!-- Releases -->
+                <tr v-for="release in sorted">
+                    <!-- Docker Status -->
+                    <td>
+                        <div class="btn-group ">
+                            <button :disabled="!release.dockerStatus.length"
+                                    class="btn btn-default btn-sm dropdown-toggle "
+                                    type="button" data-toggle="dropdown"
+                                    aria-haspopup="true" aria-expanded="false">
+                                <i class="fa fa-info"></i></button>
+                            <div class="dropdown-menu">
+                                <div class="dropdown-item" v-for="docker in release.dockerStatus">
+                                    <strong>{{docker.name}}</strong>
+                                    <br/>
+                                    <small>{{docker.status}}</small>
+                                    <br/>
+                                    <small>{{docker.image.split(':').pop()}}</small>
+                                </div>
+
+                            </div>
+                        </div>
+                    </td>
+                    <!-- Name / Status / Link -->
+                    <th scope="row"><a :href="getUrl(release.local)" target="_blank">
+                        <i class="fa fa-external-link"
+                           aria-hidden="true"></i></a>
+                        <span v-if="release.extra.title">{{release.extra.title}}</span>
+                        <a v-if="release.extra.buildUrl" target="_blank" :href="release.extra.buildUrl"
+                           :title="release.extra.buildDescription + ' @' + release.extra.lastBuild"><i
+                                v-if="release.extra.buildStatus === 'success'" class="fa fa-check"></i>
+                            <i v-else-if="release.extra.buildStatus === 'pending'" class="fa fa-refresh"></i>
+                            <i v-else-if="release.extra.buildStatus === 'error'" class="fa text-danger fa-times"></i>
+                            <i v-else-if="release.extra.buildStatus === 'failure'" class="fa text-danger fa-times"></i>
+                            <span v-else>Build: {{release.extra.buildStatus}}</span></a>
+                        <span v-if="!release.extra.title" style="color: #999">&lt;No PR&gt;</span><br/>
+                        <small>{{release.remote}} {{release.hasRemote ? '' : '(Clone)'}}</small>
+                        <span v-for="label in release.extra.labels || []"
+                              class="badge badge-pill badge-primary badge-sm"
+                              :style="{backgroundColor:`#${label.color}`}">{{label.name}}</span>
+                        <span v-if="release.versions.api"
+                              class="badge badge-pill badge-secondary">Api: {{release.versions.api}}</span>
+                        <span v-if="release.versions.web"
+                              class="badge badge-pill badge-secondary">Web: {{release.versions.web}}</span>
+                    </th>
+                    <td><a v-for="url in release.extra.urls || []" target="_blank" :href="url.url"><span
+                            v-html="getIcon(url.type)"></span>&nbsp;</a></td>
+
+                    <td><span v-if="release.exists" class="badge badge-pill badge-primary">Deployed</span>
+                        <span v-if="!release.exists" class="badge badge-pill badge-primary">Not deployed</span></td>
+                    <td><select class="custom-select" v-model="linkToWeb[release.local]" style="max-width:100px">
+                        <option selected>Choose...</option>
+                        <option v-for="webBranch in webBranches" :value="webBranch">{{webBranch}}</option>
+                    </select>
+
+                        <button :disabled="!linkToWeb[release.local]" class="btn btn-outline-secondary" type="button"
+                                @click="linkWeb(release.local)">Link
+                        </button>
+                    </td>
+                    <td>{{release.createdAtFrom}}</td>
+                    <td>
+                        <div class="btn-group dropleft">
+                            <!-- Menu -->
+                            <button class="btn btn-default btn-sm dropdown-toggle" type="button" data-toggle="dropdown"
+                                    aria-haspopup="true" aria-expanded="false">
+                                <i class="fa fa-cog"></i></button>
+                            <div class="dropdown-menu">
+                                <button @click="deploy(release.remote)" class="dropdown-item"
+                                        :title="release.exists ? 'Pull the latest version of this release' : 'Do an initial deploy for this release'">
+                                    {{release.exists?
+                                    'Re-deploy' : 'Deploy'}}
+                                </button>
+                                <button :disabled="!release.exists" @click="clone(release.local)" class="dropdown-item"
+                                        title="Create a clone of this environment">
+                                    Clone
+                                </button>
+                                <div class="dropdown-divider"></div>
+                                <button :disabled="!release.exists" @click="start(release.local)" class="dropdown-item"
+                                        title="Start the environment">
+                                    Start
+                                </button>
+                                <button :disabled="!release.exists" @click="stop(release.local)" class="dropdown-item" title="Stop the environment">
+                                    Stop
+                                </button>
+                                <button :disabled="!release.exists" @click="getEnv(release.local)" class="dropdown-item"
+                                        title="Edit the environment">
+                                    Edit Environment
+                                </button>
+                                <button :disabled="!release.exists" @click="resetEnv(release.local)" class="dropdown-item"
+                                        title="Refresh environment files">
+                                    Refresh Environment
+                                </button>
+
+                                <div class="dropdown-divider"></div>
+                                <button :disabled="!release.exists" type="button" class="dropdown-item" @click="wipeDatabase(release.local)"
+                                        title="Reset the database to brand new">Wipe Database
+                                </button>
+                                <button :disabled="!release.exists" type="button" class="dropdown-item"
+                                        @click="deleteRelease(release.local)" title="Delete this scratch and the DB">
+                                    Delete
+                                </button>
+                                <button type="button" class="dropdown-item"
+                                        @click="deleteRemoteBranch(release.remote)" title="Delete the remote branch">
+                                    Delete Remote
+                                    Branch
+                                </button>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <!-- Env Modal -->
+    <div class="modal fade" id="envModal" tabindex="-1" role="dialog" aria-labelledby="envModal" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLongTitle">Environment</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div v-for="(values, env) in envVars.env">
+                        <h4>{{env}}</h4>
+                        <textarea style="width: 100%; height: 25vh" v-model="envVars.env[env]"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer" v-if="!envLoading">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" @click="setEnv(envVars.localBranch)">Save changes
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.24.0/moment.min.js"></script>
+<!--<script src="https://cdn.jsdelivr.net/npm/vue"></script>-->
+<script>
+    const DEPLOYER_URL = getBaseUrl();
+    const SCRATCH_URL_BASE = getScratchUrlBase(DEPLOYER_URL);
+
+    function getBaseUrl() {
+        //__CONTROLLER_HOST__ is dynamically injected in the nginx config, if you're running this locally it will fall back on this url
+        const fallbackUrl = 'https://deploy.scratch.bigneon.com';
+        return '__CONTROLLER_HOST__' !== '' && '__CONTROLLER_HOST__' !== '__CONTROLLER_' + 'HOST__' ? '__CONTROLLER_HOST__'.replace(/http[s]?:/, '') : fallbackUrl;
+    }
+
+    function getScratchUrlBase(deployerUrl) {
+        const [, url] = deployerUrl.split('//');
+        const parts = url.split('.');
+        parts.shift();
+        parts.unshift('__BRANCH__');
+        return `//${parts.join('.')}`;
+    }
+
+    var app = new Vue({
+        el: '#app',
+        data: {
+            loading: true,
+            api: DEPLOYER_URL,
+            releases: {
+                api: [],
+                web: []
+            },
+            envVars: false,
+            envLoading: false,
+            liveApi: {},
+            liveWeb: {},
+            linkToWeb: {},
+        },
+        computed: {
+            sorted() {
+                let sorted = (this.releases.api || []).map(i => {
+                    i.key = `${i.local} - ${i.remote}`;
+                    i.createdAtFrom = !i.exists ? "Not deployed" : i.createdAt ? moment().to(i.createdAt) : "¯\\_(ツ)_/¯";
+                    i.createdAt = moment(i.createdAt).format('YYYY-MM-DD HH:mm');
+                    i.extra = {
+                        labels: [],
+                        urls: [],
+                        ...i.extra
+                    };
+                    return i;
+                });
+                sorted.sort((a, b) => {
+                    const aExists = a.exists ? 1 : 0;
+                    const bExists = b.exists ? 1 : 0;
+                    if (aExists < bExists) return 1;
+                    if (aExists > bExists) return -1;
+
+                    return a.local < b.local ? -1 : 1;
+                });
+                return sorted
+            },
+            webBranches() {
+                return this.releases.web;
+            },
+
+        },
+        methods: {
+            getReleases() {
+                fetch(`${this.api}/instances`).then(r => {
+                    return r.json();
+                }).then(r => {
+                    this.$set(this, 'releases', r);
+                    this.$set(this, 'loading', false);
+                });
+            },
+            getIcon(type) {
+                if (type === "github") {
+
+                    return `<i class="fa fa-github fa-2x"></i>`;
+                }
+                if (type === "asana") {
+                    return `<img width="32" height="32" src="asana.jpg">`;
+                }
+                return type
+            },
+
+            getUrl(branch) {
+                return SCRATCH_URL_BASE.replace('__BRANCH__', branch);
+            },
+            linkWeb(localBranch) {
+                if (!this.linkToWeb[localBranch]) {
+                    alert("You have not selected a web branch")
+                    return;
+                }
+                if (confirm(`Are you sure you want to link ${this.linkToWeb[localBranch]} to ${localBranch}, this will take about 5 minutes to deploy.`)) {
+                    fetch(`${this.api}/instances/${localBranch}/web`, {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({webBranch: this.linkToWeb[localBranch]})
+                    }).then(r => r.json())
+                        .then(r => {
+                            console.log("Done", r);
+                        });
+                }
+            },
+            stop(localBranch) {
+                fetch(`${this.api}/instances/${localBranch}/stop`, {
+                    method: 'POST',
+                })
+                    .then(r => r.json())
+                    .then(r => {
+                        console.log(r);
+                        location.reload();
+                    });
+            },
+            start(localBranch) {
+                fetch(`${this.api}/instances/${localBranch}/start`, {
+                    method: 'POST',
+                })
+                    .then(r => r.json())
+                    .then(r => {
+                        console.log(r);
+                        location.reload();
+                    });
+            },
+            resetEnv(localBranch) {
+                fetch(`${this.api}/instances/${localBranch}/env`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({envs: ['api', 'web', 'bn-cube']})
+                    });
+            },
+            getEnv(localBranch) {
+                fetch(`${this.api}/instances/${localBranch}/env`,
+                    {
+                        method: 'GET',
+                    })
+                    .then(r => r.json())
+                    .then(env => {
+                        this.$set(this, 'envVars', {localBranch, env});
+                        $('#envModal').modal('show')
+                    });
+            },
+            setEnv(localBranch) {
+                this.$set(this, 'envLoading', true);
+                fetch(`${this.api}/instances/${localBranch}/env`,
+                    {
+                        method: 'PUT',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({...this.envVars.env})
+                    })
+                    .finally(() => {
+                        this.$set(this, 'envLoading', false);
+                        this.$set(this, 'envVars', false);
+                        $('#envModal').modal('hide')
+                    });
+            },
+            wipeDatabase(localBranch) {
+                if (!confirm("Are you sure you want to wipe the database for this release?")) {
+                    return;
+                }
+                fetch(`${this.api}/instances/${localBranch}/db`, {
+                    method: 'DELETE',
+                })
+                    .then(r => r.json())
+                    .then(r => {
+                        console.log(r);
+                        location.reload();
+                    });
+            },
+            deleteRemoteBranch(remoteBranch) {
+                if (!confirm("Are you sure you want to delete this remote branch?")) {
+                    return;
+                }
+                fetch(`${this.api}/github/${remoteBranch}`, {
+                    method: 'DELETE',
+                })
+                    .then(r => r.json())
+                    .then(r => {
+                        console.log(r);
+
+                        this.releases.api.splice(this.releases.api.findIndex(i => i.remote === remoteBranch), 1);
+                        this.$set(this.releases, 'api', this.releases.api);
+                    });
+            },
+            deleteRelease(localBranch) {
+                if (!confirm("Are you sure you want to delete this release?")) {
+                    return;
+                }
+                fetch(`${this.api}/instances/${localBranch}`, {
+                    method: 'DELETE',
+                })
+                    .then(r => {
+                        console.log("Instance deleted", r);
+                    });
+
+            },
+            deploy(remoteBranch) {
+                fetch(`${this.api}/scratches`, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        branch: remoteBranch
+                    })
+
+                })
+                    .then(r => r.json())
+                    .then(r => {
+                        console.log(r);
+                        location.reload();
+                    });
+            },
+            clone(localBranch) {
+                let name = prompt("Enter a name, leave blank for automatic");
+                if (name === null) {
+                    return;
+                }
+                fetch(`${this.api}/scratches/${localBranch}/clone`, {
+                    method: 'POST',
+                    body: JSON.stringify({name}),
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
+
+                })
+                    .then(r => r.json())
+                    .then(r => {
+                        console.log(r);
+                        location.reload();
+                    });
+            },
+
+        },
+        created() {
+            this.getReleases();
+        }
+    })
+</script>
+<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
+        integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
+        crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
+        integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
+        crossorigin="anonymous"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+        integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
+        crossorigin="anonymous"></script>
+</body>
+</html>
