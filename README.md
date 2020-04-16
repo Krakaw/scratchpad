@@ -24,11 +24,11 @@ cp controller/.pg.env.sample controller/.pg.env
 
 ## What's Happening
 
-1. `start.sh` will start the controller docker container that has a node.js web server, it also starts an `inotifywait` command to monitor the host nginx configs.
-2. Using `network_mode: host` it listens directly the the `PORT` specified. This also gives access to `netstat` which allows the container to find open ports to start new scratches on.
-3. The `controller` docker has access to `docker.sock` so it can spin up the main environment (pg, redis, mockchain) as well as turn on and off the scratches.
-4. Each scratch gets its own copy of the `templates/.*.env` and symlinked the other control files.
-5. The main complexity is in the nginx reload until we move to a dockerized nginx
+1. `start.sh` will start the controller docker container that has a node.js web server that controls the rest of the docker containers.
+2. The `controller` docker has access to `docker.sock` so it can spin up the main environment (pg, redis, mockchain) as well as turn on and off the scratches.
+3. Each scratch gets its own copy of the `templates/.*.env` and symlinked the other control files.
+4. Each scratch has a unix socket that the nginx container proxies all traffic through.
+5. Either expose the nginx container port and update the server_name fields in nginx.conf or proxy an SSL connection from another nginx instance.
 
 ## Unix Sockets
 
