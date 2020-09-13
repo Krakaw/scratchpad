@@ -11,10 +11,10 @@
     align-content: center;
     align-items: center;
 }
-.lds-heart {
-    animation: lds-heart 1.2s infinite cubic-bezier(0.215, 0.61, 0.355, 1);
+.lub-dub {
+    animation: lub-dub 1.2s infinite cubic-bezier(0.215, 0.61, 0.355, 1);
 }
-@keyframes lds-heart {
+@keyframes lub-dub {
     0% {
         transform: scale(0.95);
     }

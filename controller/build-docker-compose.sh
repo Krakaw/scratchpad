@@ -1,19 +1,12 @@
 #!/bin/bash
 
-OUTPUT_FILE=docker-compose.built.yml
-cat << EOM > "$OUTPUT_FILE"
-version: "3.4"
-services:
-EOM
+TEMPLATE_FILE=$1
+OUTPUT_FILE=$2
 
+TEMPLATE_STRINGS=""
 for TEMPLATE in ./docker-services.d/*.yml; do
-  cat "$TEMPLATE" >> "$OUTPUT_FILE"
+  TEMPLATE_STRING=$(tr <"$TEMPLATE" '\n' '§')
+  TEMPLATE_STRINGS="$TEMPLATE_STRINGS§$TEMPLATE_STRING"
 done
 
-cat << EOM >> "$OUTPUT_FILE"
-
-networks:
-  controller-network:
-    external: true
-EOM
-
+sed "s|{TEMPLATES}|$TEMPLATE_STRINGS|" "$TEMPLATE_FILE" | tr '§' '\n' >"$OUTPUT_FILE"

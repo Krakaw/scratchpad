@@ -72,9 +72,9 @@ get_env() {
 
 reset_env_from_template() {
   FILE="$1"
-  cp "../../templates/.$FILE.env" ".$FILE.env"
-  sed -i "s|__DB_NAME__|$DB_NAME|g" ".$FILE.env"
-  sed -i "s|__API_BRANCH_URL__|$API_BRANCH_URL|g" ".$FILE.env"
+  cp "../../templates/env.d/$FILE" ".$FILE"
+  sed -i "s|__DB_NAME__|$DB_NAME|g" ".$FILE"
+  sed -i "s|__API_BRANCH_URL__|$API_BRANCH_URL|g" ".$FILE"
 }
 
 if [ -z "$1" ]; then

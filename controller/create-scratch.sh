@@ -6,7 +6,7 @@ exec &>> >(tee -a "logs/$(basename $0)-$timestamp.txt") 2>> >(tee -a "logs/$(bas
 
 usage() {
     echo "API Branch required"
-    echo "$0 --api api_branch_name [--name release_name_or_alias] [--web web_branch_name]"
+    echo "$0 --api api_branch_name [--name release_name_or_alias] [--web web_branch_name] [--db-prefix db_prefix]"
 }
 
 if [[ $# -eq 0 ]]; then
@@ -14,6 +14,7 @@ if [[ $# -eq 0 ]]; then
   exit 1
 fi
 
+DB_PREFIX="scratchpad_"
 BASE_PATH="$(cd "$(dirname "$0")" && cd ../ && pwd)"
 BASE_RELEASE_PATH="${BASE_PATH}/releases"
 TEMPLATES_DIR="${BASE_PATH}/templates"
@@ -37,6 +38,10 @@ while [ "$1" != "" ]; do
         shift
         BUILD_DIR=$1
         ;;
+    -d | --db-prefix)
+        shift
+        DB_PREFIX=$1
+        ;;
     -h | --help)
         usage
         exit
@@ -57,29 +62,36 @@ fi
 RELEASE_NAME="${RELEASE_NAME:-$API_BRANCH}"
 API_BRANCH_URL=${RELEASE_NAME//[^[:alnum:]-_]/}
 WEB_BRANCH=${WEB_BRANCH:-master}
-DB_NAME="bigneon_$API_BRANCH_URL"
+DB_NAME="${DB_PREFIX}${API_BRANCH_URL}"
 RELEASE_PATH="${BASE_RELEASE_PATH}/$API_BRANCH_URL"
 BUILD_DIR="${RELEASE_PATH}/${BUILD_DIR:-web}"
 
-#The instance already exists, just pull the latest
+# The instance already exists, just pull the latest
 if [ -d "$BUILD_DIR" ]; then
   cd "$RELEASE_PATH" && ./manage-instance.sh --update
   exit 0
 fi
 
-mkdir -p "$BUILD_DIR" || exit 1
-mkdir -p "$RELEASE_PATH/logs" || exit 1
-mkdir -p "$RELEASE_PATH/socks" || exit 1
-touch "$RELEASE_PATH/logs/api.log" || exit 1
-touch "$RELEASE_PATH/logs/web.log" || exit 1
+# Create required folders
+PATHS=("$BUILD_DIR" "$RELEASE_PATH/logs" "$RELEASE_PATH/socks")
+for PATH in "${PATHS[@]}"; do
+  mkdir -p "$PATH" || exit 1
+done
 
+# Create required files
+TOUCH_FILES=("$RELEASE_PATH/logs/api.log" "$RELEASE_PATH/logs/web.log")
+for TOUCH_FILE in "${TOUCH_FILES[@]}"; do
+  touch "$TOUCH_FILE" || exit 1
+done
+
+# Set permissions for release dir
 chown -R "${CUID}:${CGID}" "$RELEASE_PATH"
 chmod -R g+s "$RELEASE_PATH"
 
 ############################## Now we move into the release path
 cd "${RELEASE_PATH}" || exit 1
 
-LINK_FILES=("docker-compose.yml" "manage-instance.sh" "docker-compose.sh" "delete.sh")
+LINK_FILES=("docker-compose.yml" "manage-instance.sh" "docker-compose.sh" "delete.sh" "scripts")
 for LINK_FILE in "${LINK_FILES[@]}"; do
   ln -sr "../../templates/$LINK_FILE" "./"
 done
@@ -102,8 +114,7 @@ export CGID=$CGID
 EOM
 source docker-source.sh
 
-GENERATE_ENVS=("web" "api" "bn-cube")
-for GENERATE_ENV in "${GENERATE_ENVS[@]}"; do
+for GENERATE_ENV in ../../templates/env.d/*.env; do
   ./manage-instance.sh --reset-env "$GENERATE_ENV"
 done
 
