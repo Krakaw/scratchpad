@@ -1,0 +1,16 @@
+  pg:
+    image: postgres:12.4
+    command: postgres -c 'shared_buffers=256MB' -c 'max_connections=200'
+    restart: on-failure
+    env_file: .pg.env
+    volumes:
+      - ./data/postgresql:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+    networks:
+      - controller-network

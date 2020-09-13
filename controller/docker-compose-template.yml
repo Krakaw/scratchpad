@@ -1,0 +1,7 @@
+version: "3.4"
+services:
+  {TEMPLATES}
+
+networks:
+  controller-network:
+    external: true
