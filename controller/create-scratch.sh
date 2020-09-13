@@ -91,10 +91,13 @@ chmod -R g+s "$RELEASE_PATH"
 ############################## Now we move into the release path
 cd "${RELEASE_PATH}" || exit 1
 
-LINK_FILES=("docker-compose.yml" "manage-instance.sh" "docker-compose.sh" "delete.sh" "scripts")
+LINK_FILES=("docker-compose.template.yml" "manage-instance.sh" "docker-compose.sh" "delete.sh" "scripts")
 for LINK_FILE in "${LINK_FILES[@]}"; do
   ln -sr "../../templates/$LINK_FILE" "./"
 done
+
+# Specifically link the build-docker-compose.sh file
+ln -sr "../../controller/build-docker-compose.sh" "./"
 
 #Manually link the template fallback index.html
 ln -sr "../../templates/building.html" "$BUILD_DIR/"

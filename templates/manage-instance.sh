@@ -15,7 +15,11 @@ generate_version() {
 }
 
 initialise() {
-  docker-compose up api-initialise
+  # Generate the docker-compose.yml file
+  ./build-docker-compose.sh docker-compose.template.yml docker-compose.yml
+  for SCRIPT in ./scripts/initialise.d/*.sh; do
+    "$SCRIPT"
+  done
 }
 
 start() {
@@ -48,26 +52,28 @@ wipe_db() {
 
 web() {
   rm -rf "$BUILD_DIR/build"
-  docker-compose pull web-build
-  docker-compose up --no-deps web-build
-  sed -i -E  "s/\"version\":\"(.*?)\"/\"version\":\"\1-$WEB_BRANCH\"/" "$BUILD_DIR/build/version.json"
-  find "$BUILD_DIR/build/static/js/" -name 'main.*.js' -exec /usr/bin/perl -p -i -e  "s/window.bigneonVersion=\"(.*?)\"/window.bigneonVersion=\"\1-$WEB_BRANCH\"/g" {} +
+  docker-compose pull web
+  docker-compose up --no-deps web
+  [ -f ./scripts/up.d/web.sh ] && ./scripts/up.d/web.sh
+
 }
 
 update() {
   touch .
   generate_version
-  docker-compose pull api
+  docker-compose pull
   docker-compose stop api
   docker-compose up -d sockets
   docker-compose up -d --no-deps api
 }
 
 get_env() {
-  API_ENV=$(cat .api.env | grep -v "^\s*#" | sort | grep -v ^$)
-  WEB_ENV=$(cat .web.env | grep -v "^\s*#" | sort | grep -v ^$)
-  CUBE_ENV=$(cat .bn-cube.env | grep -v "^\s*#" | sort | grep -v ^$)
-  echo -e "$API_ENV\n|--|\n$WEB_ENV\n|--|\n$CUBE_ENV"
+  OUTPUT=""
+  for ENV_FILE in ./.*.env; do
+      FILE_CONTENTS=$(grep "$ENV_FILE" -v "^\s*#" | sort | grep -v ^$)
+      OUTPUT="$OUTPUT|--|$ENV_FILE|--|\n$FILE_CONTENTS\n"
+  done
+  echo -e "$OUTPUT"
 }
 
 reset_env_from_template() {
