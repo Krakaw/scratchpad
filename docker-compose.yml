@@ -17,7 +17,7 @@ services:
       - controller_base:/controller
       - "$DOCKER_BIN:/usr/bin/docker"
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./_deployer:/app
+      - ./deployer:/app
 
   nginx:
     build:

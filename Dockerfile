@@ -10,9 +10,9 @@ RUN apt-get update \
 
 RUN mkdir /app /nginx /controller
 WORKDIR /app
-COPY ./_deployer/package*.json ./
+COPY ./deployer/package*.json ./
 RUN npm install
-COPY ./_deployer ./
+COPY ./deployer ./
 
 
 EXPOSE 3002
