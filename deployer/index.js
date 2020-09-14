@@ -4,8 +4,9 @@ const cors = require("cors");
 
 //----Custom const
 const PORT = process.env.PORT || 3000;
-const {GITHUB_API_RELEASE_BASE_URL, GITHUB_API_BASE_URL, RELEASE_BASE} = process.env;
+const {GITHUB_API_RELEASE_BASE_URL, GITHUB_API_BASE_URL, GITHUB_WEB_BASE_URL, RELEASE_BASE} = process.env;
 process.env.RELEASES_DIR = `${RELEASE_BASE}/releases`;
+process.env.GITHUB_WEB_BRANCHES_URL = `${GITHUB_WEB_BASE_URL}/branches?per_page=1000`;
 process.env.API_RELEASE_BRANCHES_URL = `${GITHUB_API_RELEASE_BASE_URL}/branches?per_page=1000`;
 process.env.API_BRANCHES_URL = `${GITHUB_API_BASE_URL}/branches?per_page=1000`;
 process.env.API_PULL_REQUEST_URL = `${GITHUB_API_BASE_URL}/pulls?per_page=1000`;

@@ -6,7 +6,9 @@
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
     <link rel="stylesheet" href="style.css">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-
+    <link rel="icon"
+          type="image/png"
+          href="/favicon.png">
     <meta charset="UTF-8">
     <title>Scratchpad</title>
 </head>
@@ -16,9 +18,9 @@
     <div class="navbar navbar-dark bg-dark shadow-sm">
         <div class="d-flex justify-content-between">
             <a href="#" class="navbar-brand d-flex align-items-center">
-                <img style="width: 45px; height: 45px;" src="https://www.bigneon.com/images/bn-logo.png" alt="Logo">
+                <img style="width: 45px; height: 45px;" src="/logo.svg" alt="Logo">
                 &nbsp;
-                <strong>Big Neon Scratchpad</strong>
+                <strong>Scratchpad</strong>
             </a>
 
         </div>
@@ -27,10 +29,7 @@
 <br>
 <div id="app" class="container-fluid">
     <div v-if="loading" class="loader">
-        <img class="lub-dub"
-             style="width: 250px; height: 250px;"
-             src="https://www.bigneon.com/images/bn-logo.png"
-             alt="Logo">
+        <img class="lub-dub" src="/logo.svg" alt="Scratchpad Logo">
     </div>
     <!-- Main content table -->
     <div class="row">
@@ -197,7 +196,7 @@
 
     function getBaseUrl() {
         //__CONTROLLER_HOST__ is dynamically injected in the nginx config, if you're running this locally it will fall back on this url
-        const fallbackUrl = 'https://deploy.scratch.bigneon.com';
+        const fallbackUrl = 'https://scratch.dyn-ip.me';
         return '__CONTROLLER_HOST__' !== '' && '__CONTROLLER_HOST__' !== '__CONTROLLER_' + 'HOST__' ? '__CONTROLLER_HOST__'.replace(/http[s]?:/, '') : fallbackUrl;
     }
 

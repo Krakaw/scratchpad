@@ -9,85 +9,93 @@ const {cleanBranch} = require("../helpers/branches");
 const {API_RELEASE_BRANCHES_URL, API_BRANCHES_URL, GITHUB_WEB_BRANCHES_URL, API_PULL_REQUEST_URL, RELEASES_DIR, DEBUG} = process.env;
 
 const branches = async function (req, res) {
-    let dirs = getDirectories(RELEASES_DIR);
-    let dirStats = getDirStats(dirs);
-    let dockerStatus = await getDockerStatus();
-    const headers = getGithubAuthHeaders();
-    let webBranches = await getBranches(GITHUB_WEB_BRANCHES_URL, headers);
-    let apiReleaseRemoteBranches = await getBranches(
-        API_RELEASE_BRANCHES_URL,
-        headers
-    );
-    let apiRemoteBranches = await getBranches(API_BRANCHES_URL, headers);
-    let apiPullRequests = await getBranches(API_PULL_REQUEST_URL, headers);
-    let pullRequestDetails = await getPullRequestDetails(
-        API_PULL_REQUEST_URL,
-        headers
-    );
-    apiRemoteBranches = [...new Set(apiRemoteBranches.concat(apiPullRequests))];
+    try {
 
-    let usedDirs = [];
-    /** Check all of the remote branches from the api and see if we have a local equivalent*/
-    let apiReleaseBranches = apiReleaseRemoteBranches.map(branch => {
-        let localBranch = cleanBranch(branch);
-        let {birthtimeMs: createdAt = 0} = dirStats[branch] || {};
-        usedDirs.push(localBranch);
-        return {
-            hasRemote: true,
-            remote: branch,
-            local: localBranch,
-            exists: dirs.indexOf(localBranch) > -1,
-            existsOnSourceRepo: apiRemoteBranches.indexOf(branch) > -1,
-            ports: {},
-            createdAt,
-            extra: pullRequestDetails[branch] || {},
-            dockerStatus: dockerStatus[localBranch] || [],
-            versions: {}
-        };
-    });
 
-    /** Check that all of our local instances have been accounted for and return any that didn't have a remote branch */
-    dirs.forEach(dir => {
-        const convertedApiRemoteBranches = apiRemoteBranches.map(cleanBranch);
-        if (usedDirs.indexOf(dir) === -1) {
-            let {birthtimeMs: createdAt = 0} = dirStats[dir] || {};
-            apiReleaseBranches.push({
-                hasRemote: false,
-                remote: `${dir}`,
-                local: dir,
-                createdAt,
-                exists: true,
-                existsOnSourceRepo: convertedApiRemoteBranches.indexOf(dir) > -1,
+        let dirs = getDirectories(RELEASES_DIR);
+        let dirStats = getDirStats(dirs);
+        let dockerStatus = await getDockerStatus();
+        const headers = getGithubAuthHeaders();
+        let webBranches = await getBranches(GITHUB_WEB_BRANCHES_URL, headers);
+        let apiReleaseRemoteBranches = await getBranches(
+            API_RELEASE_BRANCHES_URL,
+            headers
+        );
+        let apiRemoteBranches = await getBranches(API_BRANCHES_URL, headers);
+        let apiPullRequests = await getBranches(API_PULL_REQUEST_URL, headers);
+        let pullRequestDetails = await getPullRequestDetails(
+            API_PULL_REQUEST_URL,
+            headers
+        );
+        apiRemoteBranches = [...new Set(apiRemoteBranches.concat(apiPullRequests))];
+
+        let usedDirs = [];
+        /** Check all of the remote branches from the api and see if we have a local equivalent*/
+        let apiReleaseBranches = apiReleaseRemoteBranches.map(branch => {
+            let localBranch = cleanBranch(branch);
+            let {birthtimeMs: createdAt = 0} = dirStats[branch] || {};
+            usedDirs.push(localBranch);
+            return {
+                hasRemote: true,
+                remote: branch,
+                local: localBranch,
+                exists: dirs.indexOf(localBranch) > -1,
+                existsOnSourceRepo: apiRemoteBranches.indexOf(branch) > -1,
                 ports: {},
-                dockerStatus: dockerStatus[dir] || [],
+                createdAt,
+                extra: pullRequestDetails[branch] || {},
+                dockerStatus: dockerStatus[localBranch] || [],
                 versions: {}
-            });
-        }
-    });
+            };
+        });
 
-    /** Add instance specific data to each local instance */
-    for (let i in apiReleaseBranches) {
-        const releaseBranch = apiReleaseBranches[i];
-        if (!releaseBranch.exists) {
-            continue;
-        }
-        let config = {};
-        let versions = {};
-        try {
-            config = readInstanceConfig(releaseBranch.local);
-        } catch (e) {
-            console.error("Failed to read config for", releaseBranch.local);
-        }
+        /** Check that all of our local instances have been accounted for and return any that didn't have a remote branch */
+        dirs.forEach(dir => {
+            const convertedApiRemoteBranches = apiRemoteBranches.map(cleanBranch);
+            if (usedDirs.indexOf(dir) === -1) {
+                let {birthtimeMs: createdAt = 0} = dirStats[dir] || {};
+                apiReleaseBranches.push({
+                    hasRemote: false,
+                    remote: `${dir}`,
+                    local: dir,
+                    createdAt,
+                    exists: true,
+                    existsOnSourceRepo: convertedApiRemoteBranches.indexOf(dir) > -1,
+                    ports: {},
+                    dockerStatus: dockerStatus[dir] || [],
+                    versions: {}
+                });
+            }
+        });
 
-        try {
-            versions = await readInstanceVersions(releaseBranch.local);
-        } catch (e) {
-            console.error("Failed to read versions for", releaseBranch.local);
-        }
+        /** Add instance specific data to each local instance */
+        for (let i in apiReleaseBranches) {
+            const releaseBranch = apiReleaseBranches[i];
+            if (!releaseBranch.exists) {
+                continue;
+            }
+            let config = {};
+            let versions = {};
+            try {
+                config = readInstanceConfig(releaseBranch.local);
+            } catch (e) {
+                console.error("Failed to read config for", releaseBranch.local);
+            }
 
-        releaseBranch.versions = versions;
+            try {
+                versions = await readInstanceVersions(releaseBranch.local);
+            } catch (e) {
+                console.error("Failed to read versions for", releaseBranch.local);
+            }
+
+            releaseBranch.versions = versions;
+        }
+        return res.json({api: apiReleaseBranches, web: webBranches});
     }
-    return res.json({api: apiReleaseBranches, web: webBranches});
+    catch(e) {
+        console.error(e)
+        return res.status(500).json(e)
+    }
 };
 
 const logs = async function (req, res) {

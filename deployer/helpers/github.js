@@ -15,12 +15,17 @@ async function getBranches(url, headers) {
     if (cache.hasOwnProperty(url) && cache[url].expires > new Date().getTime()) {
         rawData = cache[url].data;
     } else {
-        let {data} = await axios.get(url, {headers});
-        rawData = data;
-        cache[url] = {
-            expires: new Date().getTime() + 60000, //Cache for a minute
-            data
-        };
+        try {
+            const axiosResponse = await axios.get(url, {headers});
+            let {data} = axiosResponse;
+            rawData = data;
+            cache[url] = {
+                expires: new Date().getTime() + 60000, //Cache for a minute
+                data
+            };
+        }catch(e) {
+            console.error(`Could not fetch ${url}`, e);
+        }
     }
     let branchNames = rawData.map(i => i.name || i.head.ref);
     branchNames.sort();
