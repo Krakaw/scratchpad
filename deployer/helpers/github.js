@@ -1,6 +1,14 @@
 const axios = require("axios");
 const cache = require('./cache');
+const { graphql } = require("@octokit/graphql");
 const {GITHUB_USER_AGENT, GITHUB_PERSONAL_ACCESS_TOKEN, DEBUG} = process.env;
+
+
+const graphqlWithAuth = graphql.defaults({
+    headers: {
+        authorization: `token ${GITHUB_PERSONAL_ACCESS_TOKEN}`
+    }
+})
 
 function getGithubAuthHeaders() {
     return {
@@ -9,7 +17,24 @@ function getGithubAuthHeaders() {
         Authorization: `Basic ${Buffer.from(GITHUB_USER_AGENT + ":" + GITHUB_PERSONAL_ACCESS_TOKEN).toString("base64")}`
     };
 }
-
+async function getPackages(owner, name) {
+    const result = await graphqlWithAuth(`
+    query {
+        repository(owner:"${owner}", name:"${name}"){
+            packages(first:1) {
+                nodes {
+                    versions(last:100) {
+                        nodes {
+                            version
+                        }
+                    }
+                }
+            }
+        }
+    }
+    `);
+    return result.repository.packages.nodes.map(n => n.versions.nodes).flat().map(v => v.version);
+}
 async function getBranches(url, headers) {
     let rawData = [];
     if (cache.hasOwnProperty(url) && cache[url].expires > new Date().getTime()) {
@@ -85,6 +110,7 @@ async function getPullRequestDetails(url, headers) {
 }
 
 module.exports = {
+    getPackages,
     getBranches,
     getPullRequestDetails,
     getGithubAuthHeaders

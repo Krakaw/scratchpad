@@ -4,23 +4,23 @@ const exec = util.promisify(require("child_process").exec);
 const express = require("express");
 const router = express.Router();
 const {getDirStats, getDockerStatus, readInstanceConfig, readInstanceVersions, getDirectories, isValidLocalBranch} = require("../helpers/instances");
-const {getBranches, getGithubAuthHeaders, getPullRequestDetails} = require("../helpers/github");
+const {getBranches, getPackages, getGithubAuthHeaders, getPullRequestDetails} = require("../helpers/github");
 const {cleanBranch} = require("../helpers/branches");
-const {API_RELEASE_BRANCHES_URL, API_BRANCHES_URL, GITHUB_WEB_BRANCHES_URL, API_PULL_REQUEST_URL, RELEASES_DIR, DEBUG} = process.env;
+const {API_BRANCHES_URL, GITHUB_WEB_BRANCHES_URL, API_PULL_REQUEST_URL, GITHUB_GRAPHQL_PACKAGES_WEB, GITHUB_GRAPHQL_PACKAGES_API,RELEASES_DIR, DEBUG} = process.env;
 
 const branches = async function (req, res) {
     try {
-
+        const [api_owner, api_package] = GITHUB_GRAPHQL_PACKAGES_API.split('/');
+        const apiDockerImages = await getPackages(api_owner, api_package);
+        const [web_owner, web_package] = GITHUB_GRAPHQL_PACKAGES_WEB.split('/');
+        const webPackages = await getPackages(web_owner, web_package);
 
         let dirs = getDirectories(RELEASES_DIR);
         let dirStats = getDirStats(dirs);
         let dockerStatus = await getDockerStatus();
         const headers = getGithubAuthHeaders();
         let webBranches = await getBranches(GITHUB_WEB_BRANCHES_URL, headers);
-        let apiReleaseRemoteBranches = await getBranches(
-            API_RELEASE_BRANCHES_URL,
-            headers
-        );
+
         let apiRemoteBranches = await getBranches(API_BRANCHES_URL, headers);
         let apiPullRequests = await getBranches(API_PULL_REQUEST_URL, headers);
         let pullRequestDetails = await getPullRequestDetails(
@@ -31,7 +31,7 @@ const branches = async function (req, res) {
 
         let usedDirs = [];
         /** Check all of the remote branches from the api and see if we have a local equivalent*/
-        let apiReleaseBranches = apiReleaseRemoteBranches.map(branch => {
+        let apiReleaseBranches = apiDockerImages.map(branch => {
             let localBranch = cleanBranch(branch);
             let {birthtimeMs: createdAt = 0} = dirStats[branch] || {};
             usedDirs.push(localBranch);
