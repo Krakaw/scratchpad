@@ -26,7 +26,7 @@
         <rect id="rect3201" style="fill:#00ec00" transform="scale(-1,1)" height="5" width="5" y="67.362" x="-140"/>
         <rect id="rect3203" style="fill:#00ec00" transform="scale(-1,1)" height="5" width="5" y="72.362" x="-135"/>
         <rect id="rect3205" style="fill:#00ec00" transform="scale(-1,1)" height="5" width="5" y="77.362" x="-130"/>
-        <g transform="translate(0,244) scale(1, -1)">
+        <g>
             <rect id="rect3207" style="fill:#00ec00" transform="scale(-1,1)" height="5" width="5" y="127.36" x="-85"/>
             <rect id="rect3209" style="fill:#00ec00" transform="scale(-1,1)" height="5" width="5" y="122.36" x="-85"/>
             <rect id="rect3211" style="fill:#00ec00" transform="scale(-1,1)" height="5" width="5" y="117.36" x="-90"/>
