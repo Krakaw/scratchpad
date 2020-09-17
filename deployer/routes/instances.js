@@ -143,8 +143,28 @@ const deleteScratch = async function (req, res) {
 
 const getEnv = async function (req, res) {
     const {stdout: env, stderr} = await executeInstanceScript(req.params.localBranch, "manage-instance.sh", ["--env"], true);
-    const [api, web, cube] = env.split("|--|").map(s => s.trim());
-    return res.json({api, web, cube});
+    const results = {};
+    const lines = env.split("\n");
+    let currentFile = '';
+    lines.forEach(line => {
+        if (!line.trim()) {
+            return;
+        }
+        if (line.indexOf('|--|') === 0) {
+            currentFile = line.replace(/\|--\|/g, '');
+            results[currentFile] = [];
+            return;
+        }
+        if (!results[currentFile]) {
+            console.error(`No currentFile set for ${line}`);
+            return;
+        }
+        results[currentFile].push(line);
+    });
+    Object.keys(results).forEach(key => {
+        results[key] = results[key].join("\n");
+    })
+    return res.json(results);
 };
 
 const setEnv = async function(req, res) {

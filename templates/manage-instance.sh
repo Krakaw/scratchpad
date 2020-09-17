@@ -10,15 +10,16 @@ usage() {
 }
 
 generate_version() {
-  VERSION=$(docker-compose run api-initialise api-cli version | grep -v "^{")
-  echo "$VERSION" > api_version.txt
+#  VERSION=$(docker-compose run  version | grep -v "^{")
+#  echo "$VERSION" > api_version.txt
+  echo "Coming Soon" > api_version.txt
 }
 
 initialise() {
   # Generate the docker-compose.yml file
-  ./build-docker-compose.sh docker-compose.template.yml docker-compose.yml
+  ./build-docker-compose.sh docker-compose.template.yml docker-compose.yml ./docker-services.d/
   for SCRIPT in ./scripts/initialise.d/*.sh; do
-    "$SCRIPT"
+    bash "$SCRIPT"
   done
 }
 
@@ -26,7 +27,7 @@ start() {
   generate_version
   docker-compose up -d sockets
   docker-compose up -d logs
-  docker-compose up -d bn-cube
+  docker-compose up -d web
   docker-compose up -d --no-deps api
 }
 
@@ -69,18 +70,20 @@ update() {
 
 get_env() {
   OUTPUT=""
-  for ENV_FILE in ./.*.env; do
-      FILE_CONTENTS=$(grep "$ENV_FILE" -v "^\s*#" | sort | grep -v ^$)
+  shopt -s nullglob
+  for ENV_FILE in env.d/.[^.]*.env; do
+      FILE_CONTENTS=$(grep -v "^\s*#" "$ENV_FILE" | sort | grep -v ^$)
       OUTPUT="$OUTPUT|--|$ENV_FILE|--|\n$FILE_CONTENTS\n"
   done
   echo -e "$OUTPUT"
 }
 
 reset_env_from_template() {
-  FILE="$1"
-  cp "../../templates/env.d/$FILE" ".$FILE"
-  sed -i "s|__DB_NAME__|$DB_NAME|g" ".$FILE"
-  sed -i "s|__API_BRANCH_URL__|$API_BRANCH_URL|g" ".$FILE"
+  TEMPLATE_FILE="$1"
+  LOCAL_FILE="env.d/${TEMPLATE_FILE##*/}"
+  cp "$TEMPLATE_FILE" "$LOCAL_FILE"
+  sed -i "s|__DB_NAME__|$DB_NAME|g" "$LOCAL_FILE"
+  sed -i "s|__API_BRANCH_URL__|$API_BRANCH_URL|g" "$LOCAL_FILE"
 }
 
 if [ -z "$1" ]; then
@@ -88,7 +91,7 @@ if [ -z "$1" ]; then
   exit 1
 fi
 
-WEB_BRANCH=
+WEB_BRANCH=primary
 while [ "$1" != "" ]; do
   case $1 in
     -i | --initialise)

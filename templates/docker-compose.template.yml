@@ -1,7 +1,6 @@
 version: "3.4"
 services:
   {TEMPLATES}
-
   logs:
     restart: unless-stopped
     image: "mthenw/frontail"
@@ -37,3 +36,6 @@ networks:
     external: true
   internal-network:
     internal: true
+
+volumes:
+  storage:

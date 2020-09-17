@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-export timestamp=${timestamp:-$(date +'%Y-%m-%d_%Hh%M%S')}
+export timestamp=${timestamp:-$(date +'%Y-%m-%d_%H%M%S')}
 exec &>> >(tee -a "logs/$(basename $0)-$timestamp.txt") 2>> >(tee -a "logs/$(basename $0)-$timestamp.err")
 
 usage() {
@@ -61,7 +61,7 @@ fi
 
 RELEASE_NAME="${RELEASE_NAME:-$API_BRANCH}"
 API_BRANCH_URL=${RELEASE_NAME//[^[:alnum:]-_]/}
-WEB_BRANCH=${WEB_BRANCH:-master}
+WEB_BRANCH=${WEB_BRANCH:-primary}
 DB_NAME="${DB_PREFIX}${API_BRANCH_URL}"
 RELEASE_PATH="${BASE_RELEASE_PATH}/$API_BRANCH_URL"
 BUILD_DIR="${RELEASE_PATH}/${BUILD_DIR:-web}"
@@ -73,9 +73,9 @@ if [ -d "$BUILD_DIR" ]; then
 fi
 
 # Create required folders
-PATHS=("$BUILD_DIR" "$RELEASE_PATH/logs" "$RELEASE_PATH/socks")
-for PATH in "${PATHS[@]}"; do
-  mkdir -p "$PATH" || exit 1
+REQUIRED_PATHS=("$BUILD_DIR" "$RELEASE_PATH/logs" "$RELEASE_PATH/socks" "$RELEASE_PATH/storage" "$RELEASE_PATH/env.d")
+for REQUIRED_PATH in "${REQUIRED_PATHS[@]}"; do
+  mkdir -p "$REQUIRED_PATH" || exit 1
 done
 
 # Create required files
@@ -91,7 +91,7 @@ chmod -R g+s "$RELEASE_PATH"
 ############################## Now we move into the release path
 cd "${RELEASE_PATH}" || exit 1
 
-LINK_FILES=("docker-compose.template.yml" "manage-instance.sh" "docker-compose.sh" "delete.sh" "scripts")
+LINK_FILES=("docker-compose.template.yml" "manage-instance.sh" "docker-compose.sh" "delete.sh" "scripts" "docker-services.d")
 for LINK_FILE in "${LINK_FILES[@]}"; do
   ln -sr "../../templates/$LINK_FILE" "./"
 done
@@ -117,12 +117,15 @@ export CGID=$CGID
 EOM
 source docker-source.sh
 
-for GENERATE_ENV in ../../templates/env.d/*.env; do
+shopt -s nullglob
+for GENERATE_ENV in ../../templates/env.d/.[^.]*.env; do
+  echo "Generate $GENERATE_ENV"
   ./manage-instance.sh --reset-env "$GENERATE_ENV"
 done
 
 # Build the web
 echo "Building the web ..."
-./manage-instance.sh --web master --initialise --start
+./manage-instance.sh --initialise
+./manage-instance.sh --web "$WEB_BRANCH" --start
 
 echo "Done."

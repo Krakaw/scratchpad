@@ -30,6 +30,7 @@ services:
       - controller-network
     volumes:
       - controller_base:/controller
+      - "$PWD/images/nginx/nginx.conf:/etc/nginx/conf.d/default.conf"
 
 networks:
   controller-network:
