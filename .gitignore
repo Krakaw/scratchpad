@@ -7,6 +7,5 @@ node_modules/
 .bn-cube.env
 .web.env
 releases/
-logs/
 controller/data/
 controller/docker-compose.built.yml
