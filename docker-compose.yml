@@ -39,7 +39,7 @@ services:
     restart: unless-stopped
     environment:
       - LISTEN=0.0.0.0:3031
-      - BASIC_AUTH_MESSAGE="Rauthy 🦖🛡️ says no!"
+      - BASIC_AUTH_MESSAGE="Rauthy says no!"
       - AUTH_FILE=/root/config/auth.json
     volumes:
     - rauthy_config:/root/config
