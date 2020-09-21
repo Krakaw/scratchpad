@@ -47,7 +47,7 @@ rebuild() {
 
 wipe_db() {
   docker-compose stop api
-  docker-compose up api-initialise
+  [ -f ./scripts/up.d/api.sh ] && bash ./scripts/initialise.d/api.sh
   docker-compose up -d api
 }
 
@@ -55,7 +55,7 @@ web() {
   rm -rf "$BUILD_DIR/build"
   docker-compose pull web
   docker-compose up --no-deps web
-  [ -f ./scripts/up.d/web.sh ] && ./scripts/up.d/web.sh
+  [ -f ./scripts/up.d/web.sh ] && bash ./scripts/up.d/web.sh
 
 }
 
