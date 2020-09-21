@@ -1,10 +1,5 @@
 .idea/
 node_modules/
-.env
 .controller.env
 .pg.env
-.api.env
-.bn-cube.env
-.web.env
-releases/
 controller/docker-compose.built.yml
