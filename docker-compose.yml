@@ -21,8 +21,7 @@ services:
       - ./deployer:/app
 
   nginx:
-    build:
-      context: ./images/nginx
+    image: nginx
     restart: unless-stopped
     env_file:
       - .controller.env
