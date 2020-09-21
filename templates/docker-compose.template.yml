@@ -29,7 +29,7 @@ services:
     networks:
       - internal-network
     command: >
-      bash -c "/usr/bin/socat-to-tcp.sh /socks/api.sock api 8088 && /usr/bin/socat-to-tcp.sh /socks/bn-cube.sock bn-cube 4000 && /usr/bin/socat-to-tcp.sh /socks/logs.sock logs 9001 && sleep 3 && chmod 666 /socks/* && tail -f /dev/null"
+      bash -c "/usr/bin/socat-to-tcp.sh /socks/api.sock api 3001 && /usr/bin/socat-to-tcp.sh /socks/logs.sock logs 9001 && sleep 3 && chmod 666 /socks/* && tail -f /dev/null"
 
 networks:
   controller-network:
