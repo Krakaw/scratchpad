@@ -41,7 +41,9 @@ services:
       - BASIC_AUTH_MESSAGE="Rauthy says no"
       - AUTH_FILE=/root/config/auth.json
     volumes:
-    - rauthy_config:/root/config
+      - rauthy_config:/root/config
+    networks:
+      - controller-network
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:3031/status" ]
       interval: 30s
