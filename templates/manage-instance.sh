@@ -52,7 +52,7 @@ wipe_db() {
 }
 
 web() {
-  rm -rf "$BUILD_DIR/build"
+  rm -rf "$BUILD_DIR/build/*"
   docker-compose pull web
   docker-compose up --no-deps web
   [ -f ./scripts/up.d/web.sh ] && bash ./scripts/up.d/web.sh
