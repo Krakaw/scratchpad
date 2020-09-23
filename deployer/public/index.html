@@ -116,8 +116,8 @@
                             <div class="dropdown-menu">
                                 <button @click="deploy(release.remote)" class="dropdown-item"
                                         :title="release.exists ? 'Pull the latest version of this release' : 'Do an initial deploy for this release'">
-                                    {{release.exists?
-                                    'Re-deploy' : 'Deploy'}}
+                                    {{release.exists ?
+                                        'Re-deploy' : 'Deploy'}}
                                 </button>
                                 <button :disabled="!release.exists" @click="clone(release.local)" class="dropdown-item"
                                         title="Create a clone of this environment">
@@ -128,20 +128,23 @@
                                         title="Start the environment">
                                     Start
                                 </button>
-                                <button :disabled="!release.exists" @click="stop(release.local)" class="dropdown-item" title="Stop the environment">
+                                <button :disabled="!release.exists" @click="stop(release.local)" class="dropdown-item"
+                                        title="Stop the environment">
                                     Stop
                                 </button>
                                 <button :disabled="!release.exists" @click="getEnv(release.local)" class="dropdown-item"
                                         title="Edit the environment">
                                     Edit Environment
                                 </button>
-                                <button :disabled="!release.exists" @click="resetEnv(release.local)" class="dropdown-item"
+                                <button :disabled="!release.exists" @click="resetEnv(release.local)"
+                                        class="dropdown-item"
                                         title="Refresh environment files">
                                     Refresh Environment
                                 </button>
 
                                 <div class="dropdown-divider"></div>
-                                <button :disabled="!release.exists" type="button" class="dropdown-item" @click="wipeDatabase(release.local)"
+                                <button :disabled="!release.exists" type="button" class="dropdown-item"
+                                        @click="wipeDatabase(release.local)"
                                         title="Reset the database to brand new">Wipe Database
                                 </button>
                                 <button :disabled="!release.exists" type="button" class="dropdown-item"
@@ -279,19 +282,19 @@
                     alert("You have not selected a web branch")
                     return;
                 }
-                if (confirm(`Are you sure you want to link ${this.linkToWeb[localBranch]} to ${localBranch}, this will take about 5 minutes to deploy.`)) {
-                    fetch(`${this.api}/instances/${localBranch}/web`, {
+                fetch(`${this.api}/instances/${localBranch}/web`,
+                    {
                         method: 'POST',
                         headers: {
                             'Accept': 'application/json',
                             'Content-Type': 'application/json'
                         },
                         body: JSON.stringify({webBranch: this.linkToWeb[localBranch]})
-                    }).then(r => r.json())
-                        .then(r => {
-                            console.log("Done", r);
-                        });
-                }
+                    })
+                    .then(r => r.json())
+                    .then(r => {
+                        console.log("Done", r);
+                    });
             },
             stop(localBranch) {
                 fetch(`${this.api}/instances/${localBranch}/stop`, {

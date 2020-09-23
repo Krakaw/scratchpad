@@ -10,16 +10,19 @@ usage() {
 }
 
 generate_version() {
+  echo ""
+  # Done in the initialize step
 #  VERSION=$(docker-compose run  version | grep -v "^{")
 #  echo "$VERSION" > api_version.txt
-  echo "Coming Soon" > api_version.txt
+#  echo "Coming Soon" > api_version.txt
 }
 
 initialise() {
   # Generate the docker-compose.yml file
   ./build-docker-compose.sh docker-compose.template.yml docker-compose.yml ./docker-services.d/
+  shopt -s nullglob
   for SCRIPT in ./scripts/initialise.d/*.sh; do
-    bash "$SCRIPT"
+    bash "$SCRIPT" || echo "Error in $SCRIPT"
   done
 }
 
