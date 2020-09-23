@@ -60,7 +60,7 @@ async function readInstanceVersions(dir) {
         if (fs.existsSync(filePath)) {
             let raw = fs.readFileSync(filePath, "utf8");
             let json = JSON.parse(raw);
-            versions.web = json.version;
+            versions.web = json.version || json;
         }
 
     } catch (e) {
