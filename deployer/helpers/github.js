@@ -1,6 +1,6 @@
 const axios = require("axios");
 const cache = require('./cache');
-const { graphql } = require("@octokit/graphql");
+const {graphql} = require("@octokit/graphql");
 const {GITHUB_USER_AGENT, GITHUB_PERSONAL_ACCESS_TOKEN, DEBUG} = process.env;
 
 
@@ -17,6 +17,7 @@ function getGithubAuthHeaders() {
         Authorization: `Basic ${Buffer.from(GITHUB_USER_AGENT + ":" + GITHUB_PERSONAL_ACCESS_TOKEN).toString("base64")}`
     };
 }
+
 async function getPackages(owner, name) {
     const result = await graphqlWithAuth(`
     query {
@@ -25,16 +26,38 @@ async function getPackages(owner, name) {
                 nodes {
                     versions(last:100) {
                         nodes {
+                            id
                             version
                         }
                     }
+                    name
+                    id
                 }
             }
         }
     }
     `);
-    return result.repository.packages.nodes.map(n => n.versions.nodes).flat().map(v => v.version);
+    return result.repository.packages.nodes.map(n => {
+        return n.versions.nodes.map(vn => {
+            vn.parent_id = n.id;
+            vn.parent_name = n.name;
+            return vn
+        })
+    }).flat().map(v => {
+        return v
+    });
 }
+
+async function deletePackage(packageId) {
+    const result = await graphqlWithAuth(`
+    query {
+       mutation {
+            
+       }
+    }
+    `);
+}
+
 async function getBranches(url, headers) {
     let rawData = [];
     if (cache.hasOwnProperty(url) && cache[url].expires > new Date().getTime()) {
@@ -48,7 +71,7 @@ async function getBranches(url, headers) {
                 expires: new Date().getTime() + 60000, //Cache for a minute
                 data
             };
-        }catch(e) {
+        } catch (e) {
             console.error(`Could not fetch ${url}`, e);
         }
     }

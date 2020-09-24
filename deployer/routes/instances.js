@@ -32,7 +32,7 @@ const branches = async function (req, res) {
         let usedDirs = [];
         /** Check all of the remote branches from the api and see if we have a local equivalent*/
         let apiReleaseBranches = apiDockerImages.map(branch => {
-            let localBranch = cleanBranch(branch);
+            let localBranch = cleanBranch(branch.version);
             let {birthtimeMs: createdAt = 0} = dirStats[branch] || {};
             usedDirs.push(localBranch);
             return {

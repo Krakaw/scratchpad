@@ -10,9 +10,10 @@ RUN apt-get update \
 
 RUN mkdir /app /nginx /controller
 WORKDIR /app
-COPY ./package*.json ./
-RUN npm install
+#COPY ./package*.json ./
 COPY . .
+
+RUN npm install --production
 
 
 EXPOSE 3002
