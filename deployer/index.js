@@ -26,5 +26,5 @@ app.use('/scratches', require('./routes/deployments'));
 app.use('/instances', require('./routes/instances'));
 app.use('/github', require('./routes/github'));
 app.use('/controller', require('./routes/controller'));
-
+app.use('/images', require('./routes/images'))
 app.listen(PORT, () => console.log(`Scratch controller listening on port: ${PORT}`));

@@ -19,6 +19,7 @@ function getGithubAuthHeaders() {
 }
 
 async function getPackages(owner, name) {
+
     const result = await graphqlWithAuth(`
     query {
         repository(owner:"${owner}", name:"${name}"){
@@ -49,13 +50,19 @@ async function getPackages(owner, name) {
 }
 
 async function deletePackage(packageId) {
+    let graphqlWithAuth = graphql.defaults({
+        headers: {
+            accept: `application/vnd.github.package-deletes-preview+json`,
+            authorization: `token ${GITHUB_PERSONAL_ACCESS_TOKEN}`
+        },
+        method: 'POST'
+    })
     const result = await graphqlWithAuth(`
-    query {
        mutation {
-            
+            deletePackageVersion( input: { packageVersionId: "${packageId}" }) { success }            
        }
-    }
     `);
+    return result;
 }
 
 async function getBranches(url, headers) {
@@ -134,6 +141,7 @@ async function getPullRequestDetails(url, headers) {
 
 module.exports = {
     getPackages,
+    deletePackage,
     getBranches,
     getPullRequestDetails,
     getGithubAuthHeaders
