@@ -4,7 +4,7 @@ const exec = util.promisify(require("child_process").exec);
 const express = require("express");
 const router = express.Router();
 const {getDirStats, getDockerStatus, readInstanceConfig, readInstanceVersions, getDirectories, isValidLocalBranch} = require("../helpers/instances");
-const {getBranches, getPackages, getGithubAuthHeaders, getPullRequestDetails} = require("../helpers/github");
+const {getBranchNames, getPackages, getGithubAuthHeaders, getPullRequestDetails} = require("../helpers/github");
 const {cleanBranch} = require("../helpers/branches");
 const {API_BRANCHES_URL, GITHUB_WEB_BRANCHES_URL, API_PULL_REQUEST_URL, GITHUB_GRAPHQL_PACKAGES_WEB, GITHUB_GRAPHQL_PACKAGES_API,RELEASES_DIR, DEBUG} = process.env;
 
@@ -19,10 +19,10 @@ const branches = async function (req, res) {
         let dirStats = getDirStats(dirs);
         let dockerStatus = await getDockerStatus();
         const headers = getGithubAuthHeaders();
-        let webBranches = await getBranches(GITHUB_WEB_BRANCHES_URL, headers);
+        let webBranches = await getBranchNames(GITHUB_WEB_BRANCHES_URL, headers);
 
-        let apiRemoteBranches = await getBranches(API_BRANCHES_URL, headers);
-        let apiPullRequests = await getBranches(API_PULL_REQUEST_URL, headers);
+        let apiRemoteBranches = await getBranchNames(API_BRANCHES_URL, headers);
+        let apiPullRequests = await getBranchNames(API_PULL_REQUEST_URL, headers);
         let pullRequestDetails = await getPullRequestDetails(
             API_PULL_REQUEST_URL,
             headers
@@ -31,8 +31,8 @@ const branches = async function (req, res) {
 
         let usedDirs = [];
         /** Check all of the remote branches from the api and see if we have a local equivalent*/
-        let apiReleaseBranches = apiDockerImages.map(branch => {
-            let localBranch = cleanBranch(branch.version);
+        let apiReleaseBranches = apiRemoteBranches.map(branch => {
+            let localBranch = cleanBranch(branch);
             let {birthtimeMs: createdAt = 0} = dirStats[branch] || {};
             usedDirs.push(localBranch);
             return {
@@ -41,6 +41,7 @@ const branches = async function (req, res) {
                 local: localBranch,
                 exists: dirs.indexOf(localBranch) > -1,
                 existsOnSourceRepo: apiRemoteBranches.indexOf(branch) > -1,
+                hasDockerImage: !!apiDockerImages.find(d => cleanBranch(d.version) === localBranch),
                 ports: {},
                 createdAt,
                 extra: pullRequestDetails[branch] || {},

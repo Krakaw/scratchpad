@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const {deletePackage, getPackages} = require('../helpers/github');
-const {   GITHUB_GRAPHQL_PACKAGES_WEB, GITHUB_GRAPHQL_PACKAGES_API} = process.env;
+const {   GITHUB_GRAPHQL_PACKAGES_WEB, GITHUB_GRAPHQL_PACKAGES_API } = process.env;
 const deleteImage = async function (req, res) {
     try {
         const {source, id} = req.params;
@@ -27,7 +27,20 @@ const getImages = async function(req,res) {
 
     return res.json({api, web})
 }
+
+const buildImage = async function(req, res) {
+    try {
+        const {source} = req.params;
+        const {branch} = req.body;
+
+
+    } catch (e) {
+        console.error(e);
+        res.sendStatus(500)
+    }
+}
 router.get("/:source", getImages);
+router.post("/build/:source", buildImage)
 router.delete("/:source/:id", deleteImage)
 
 module.exports = router;

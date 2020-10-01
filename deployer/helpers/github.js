@@ -65,7 +65,7 @@ async function deletePackage(packageId) {
     return result;
 }
 
-async function getBranches(url, headers) {
+async function getBranchNames(url, headers) {
     let rawData = [];
     if (cache.hasOwnProperty(url) && cache[url].expires > new Date().getTime()) {
         rawData = cache[url].data;
@@ -142,7 +142,7 @@ async function getPullRequestDetails(url, headers) {
 module.exports = {
     getPackages,
     deletePackage,
-    getBranches,
+    getBranchNames: getBranchNames,
     getPullRequestDetails,
     getGithubAuthHeaders
 };

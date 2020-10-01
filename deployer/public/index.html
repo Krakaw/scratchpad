@@ -114,7 +114,10 @@
                                     aria-haspopup="true" aria-expanded="false">
                                 <i class="fa fa-cog"></i></button>
                             <div class="dropdown-menu">
-                                <button @click="deploy(release.remote)" class="dropdown-item"
+                                <button @click="build(release.remote)" class="dropdown-item">Build docker image</button>
+                                <button @click="deploy(release.remote)"
+                                        :disabled="!release.hasDockerImage"
+                                        class="dropdown-item"
                                         :title="release.exists ? 'Pull the latest version of this release' : 'Do an initial deploy for this release'">
                                     {{release.exists ?
                                         'Re-deploy' : 'Deploy'}}
@@ -394,6 +397,24 @@
                         console.log("Instance deleted", r);
                     });
 
+            },
+            build(remoteBranch) {
+                fetch(`${this.api}/images/build`, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        branch: remoteBranch
+                    })
+
+                })
+                    .then(r => r.json())
+                    .then(r => {
+                        console.log(r);
+                        location.reload();
+                    });
             },
             deploy(remoteBranch) {
                 fetch(`${this.api}/scratches`, {
