@@ -11,6 +11,7 @@
           href="/favicon.png">
     <meta charset="UTF-8">
     <title>Scratchpad</title>
+    <script src="../../../../js/github-testbed/actions.js"></script>
 </head>
 <body>
 <header>
@@ -406,7 +407,9 @@
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        branch: remoteBranch
+                        branch: remoteBranch,
+                        stack: 'api',
+                        source: 'github_packages'
                     })
 
                 })

@@ -1,8 +1,8 @@
 const axios = require("axios");
 const cache = require('./cache');
 const {graphql} = require("@octokit/graphql");
+const {Octokit} = require("@octokit/rest");
 const {GITHUB_USER_AGENT, GITHUB_PERSONAL_ACCESS_TOKEN, DEBUG} = process.env;
-
 
 const graphqlWithAuth = graphql.defaults({
     headers: {
@@ -63,6 +63,18 @@ async function deletePackage(packageId) {
        }
     `);
     return result;
+}
+
+async function dispatchWorkflow(owner, repo, workflow_id, branch) {
+    const octokit = new Octokit({
+        auth: GITHUB_PERSONAL_ACCESS_TOKEN,
+    });
+    return await octokit.actions.createWorkflowDispatch({
+        owner,
+        repo,
+        workflow_id,
+        ref: branch,
+    });
 }
 
 async function getBranchNames(url, headers) {
@@ -142,7 +154,9 @@ async function getPullRequestDetails(url, headers) {
 module.exports = {
     getPackages,
     deletePackage,
-    getBranchNames: getBranchNames,
+    getBranchNames,
     getPullRequestDetails,
-    getGithubAuthHeaders
+    getGithubAuthHeaders,
+    dispatchWorkflow
+
 };

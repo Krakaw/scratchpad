@@ -10,9 +10,9 @@ const {API_BRANCHES_URL, GITHUB_WEB_BRANCHES_URL, API_PULL_REQUEST_URL, GITHUB_G
 
 const branches = async function (req, res) {
     try {
-        const [api_owner, api_package] = GITHUB_GRAPHQL_PACKAGES_API.split('/');
+        const [api_owner, api_package, _a] = GITHUB_GRAPHQL_PACKAGES_API.split('/');
         const apiDockerImages = await getPackages(api_owner, api_package);
-        const [web_owner, web_package] = GITHUB_GRAPHQL_PACKAGES_WEB.split('/');
+        const [web_owner, web_package, _w] = GITHUB_GRAPHQL_PACKAGES_WEB.split('/');
         const webPackages = await getPackages(web_owner, web_package);
 
         let dirs = getDirectories(RELEASES_DIR);

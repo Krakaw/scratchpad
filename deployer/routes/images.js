@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
-const {deletePackage, getPackages} = require('../helpers/github');
-const {   GITHUB_GRAPHQL_PACKAGES_WEB, GITHUB_GRAPHQL_PACKAGES_API } = process.env;
+const {deletePackage, getPackages, dispatchWorkflow} = require('../helpers/github');
+const {GITHUB_GRAPHQL_PACKAGES_WEB, GITHUB_GRAPHQL_PACKAGES_API} = process.env;
 const deleteImage = async function (req, res) {
     try {
         const {source, id} = req.params;
@@ -19,20 +19,40 @@ const deleteImage = async function (req, res) {
     }
 }
 
-const getImages = async function(req,res) {
-    const [api_owner, api_package] = GITHUB_GRAPHQL_PACKAGES_API.split('/');
+const getImages = async function (req, res) {
+    const [api_owner, api_package, _a] = GITHUB_GRAPHQL_PACKAGES_API.split('/');
     const api = await getPackages(api_owner, api_package);
-    const [web_owner, web_package] = GITHUB_GRAPHQL_PACKAGES_WEB.split('/');
+    const [web_owner, web_package, _w] = GITHUB_GRAPHQL_PACKAGES_WEB.split('/');
     const web = await getPackages(web_owner, web_package);
 
     return res.json({api, web})
 }
 
-const buildImage = async function(req, res) {
-    try {
-        const {source} = req.params;
-        const {branch} = req.body;
+const getBuildFunction = (source) => {
+    switch (source) {
+        case 'github_packages':
+            return dispatchWorkflow;
+        default:
+            return function() {throw `Builder not available for ${source}`}
+    }
+}
 
+const buildImage = async function (req, res) {
+    try {
+        const {branch, stack, source} = req.body;
+        const buildFunction = getBuildFunction(source);
+        let owner, package;
+        switch (stack) {
+            case 'api':
+                [owner, package, workflowId] = GITHUB_GRAPHQL_PACKAGES_API.split('/');
+
+                break;
+            case 'web':
+                [owner, package, workflowId] = GITHUB_GRAPHQL_PACKAGES_WEB.split('/');
+                break;
+        }
+        const result = await buildFunction(owner, package, workflowId, branch)
+        return res.json(result);
 
     } catch (e) {
         console.error(e);
@@ -40,7 +60,7 @@ const buildImage = async function(req, res) {
     }
 }
 router.get("/:source", getImages);
-router.post("/build/:source", buildImage)
+router.post("/build", buildImage)
 router.delete("/:source/:id", deleteImage)
 
 module.exports = router;
