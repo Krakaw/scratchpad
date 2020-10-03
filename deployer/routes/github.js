@@ -12,5 +12,4 @@ const deleteRemoteBranch = async function (req, res) {
 };
 
 router.delete('/:remoteBranch', deleteRemoteBranch);
-
 module.exports = router;
