@@ -17,7 +17,6 @@ git clone git@github.com:Krakaw/scratchpad.git
 
 ```sh
 cp .controller.env.sample .controller.env
-cp controller/.mockchain.env.sample controller/.mockchain.env
 cp controller/.pg.env.sample controller/.pg.env
 ./start.sh
 ```
