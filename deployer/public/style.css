@@ -36,3 +36,12 @@
         transform: scale(0.9);
     }
 }
+
+.console {
+    background-color: black;
+    width: 100%;
+}
+
+.console pre {
+    color: #00ec00;
+}

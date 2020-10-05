@@ -97,7 +97,7 @@
                             v-html="getIcon(url.type)"></span>&nbsp;</a></td>
 
                     <td><span v-if="release.exists" class="badge badge-pill badge-primary">Deployed</span>
-                        <span v-if="!release.exists" class="badge badge-pill badge-primary">Not deployed</span></td>
+                        <span v-if="!release.exists" class="badge badge-pill badge-secondary">Not deployed</span></td>
                     <td><select class="custom-select" v-model="linkToWeb[release.local]" style="max-width:100px">
                         <option selected>Choose...</option>
                         <option v-for="webBranch in webBranches" :value="webBranch">{{webBranch}}</option>
@@ -117,7 +117,7 @@
                             <div class="dropdown-menu">
                                 <button @click="build(release.remote)" class="dropdown-item">Build docker image</button>
                                 <button @click="deploy(release.remote)"
-                                        :disabled="!release.hasDockerImage"
+                                        :disabled="release.hasDockerImage === false"
                                         class="dropdown-item"
                                         :title="release.exists ? 'Pull the latest version of this release' : 'Do an initial deploy for this release'">
                                     {{release.exists ?
@@ -166,6 +166,11 @@
                 </tr>
                 </tbody>
             </table>
+        </div>
+    </div>
+    <div class="console">
+        <div v-for="msg in consoleMessages">
+            <pre>{{msg}}</pre>
         </div>
     </div>
     <!-- Env Modal -->
@@ -229,6 +234,7 @@
             liveApi: {},
             liveWeb: {},
             linkToWeb: {},
+            consoleMessages: []
         },
         computed: {
             sorted() {
@@ -259,6 +265,12 @@
 
         },
         methods: {
+            consoleLog(...msg) {
+                const consoleMessages = this.consoleMessages;
+                consoleMessages.unshift(JSON.stringify(msg));
+                this.$set(this, 'consoleMessages', [...consoleMessages]);
+                console.log(msg);
+            },
             getReleases() {
                 fetch(`${this.api}/instances`).then(r => {
                     return r.json();
@@ -297,27 +309,26 @@
                     })
                     .then(r => r.json())
                     .then(r => {
-                        console.log("Done", r);
+
+                        this.consoleLog("Done", r);
                     });
             },
             stop(localBranch) {
                 fetch(`${this.api}/instances/${localBranch}/stop`, {
                     method: 'POST',
                 })
-                    .then(r => r.json())
-                    .then(r => {
-                        console.log(r);
-                        location.reload();
+                    .then(r => this.consoleLog("stop", r.status))
+                    .catch(e => {
+                        this.consoleLog(e);
                     });
             },
             start(localBranch) {
                 fetch(`${this.api}/instances/${localBranch}/start`, {
                     method: 'POST',
                 })
-                    .then(r => r.json())
-                    .then(r => {
-                        console.log(r);
-                        location.reload();
+                    .then(r => this.consoleLog("start", r.status))
+                    .catch(e => {
+                        this.consoleLog(e);
                     });
             },
             resetEnv(localBranch) {
@@ -368,7 +379,7 @@
                 })
                     .then(r => r.json())
                     .then(r => {
-                        console.log(r);
+                        this.consoleLog(r);
                         location.reload();
                     });
             },
@@ -381,7 +392,7 @@
                 })
                     .then(r => r.json())
                     .then(r => {
-                        console.log(r);
+                        this.consoleLog(r);
 
                         this.releases.api.splice(this.releases.api.findIndex(i => i.remote === remoteBranch), 1);
                         this.$set(this.releases, 'api', this.releases.api);
@@ -395,7 +406,7 @@
                     method: 'DELETE',
                 })
                     .then(r => {
-                        console.log("Instance deleted", r);
+                        this.consoleLog("Instance deleted", r);
                     });
 
             },
@@ -415,7 +426,7 @@
                 })
                     .then(r => r.json())
                     .then(r => {
-                        console.log(r);
+                        this.consoleLog(r);
                         location.reload();
                     });
             },
@@ -433,7 +444,7 @@
                 })
                     .then(r => r.json())
                     .then(r => {
-                        console.log(r);
+                        this.consoleLog(r);
                         location.reload();
                     });
             },
@@ -453,7 +464,7 @@
                 })
                     .then(r => r.json())
                     .then(r => {
-                        console.log(r);
+                        this.consoleLog(r);
                         location.reload();
                     });
             },
