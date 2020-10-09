@@ -50,7 +50,7 @@ rebuild() {
 
 wipe_db() {
   docker-compose stop api
-  [ -f ./scripts/up.d/api.sh ] && bash ./scripts/initialise.d/api.sh
+  [ -f ./scripts/initialise.d/api.sh ] && bash ./scripts/initialise.d/api.sh
   docker-compose up -d api
 }
 
