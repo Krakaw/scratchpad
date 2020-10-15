@@ -9,25 +9,17 @@ usage() {
   echo "$0 --update|--start|--stop|--restart|--wipe|--version [--web web_branch]"
 }
 
-generate_version() {
-  echo ""
-  # Done in the initialize step
-#  VERSION=$(docker-compose run  version | grep -v "^{")
-#  echo "$VERSION" > api_version.txt
-#  echo "Coming Soon" > api_version.txt
-}
-
 initialise() {
   # Generate the docker-compose.yml file
   ./build-docker-compose.sh docker-compose.template.yml docker-compose.yml ./docker-services.d/
   shopt -s nullglob
   for SCRIPT in ./scripts/initialise.d/*.sh; do
+    echo "Running script $SCRIPT"
     bash "$SCRIPT" || echo "Error in $SCRIPT"
   done
 }
 
 start() {
-  generate_version
   docker-compose up -d sockets
   docker-compose up -d logs
   docker-compose up -d web
@@ -64,7 +56,6 @@ web() {
 
 update() {
   touch .
-  generate_version
   docker-compose pull
   docker-compose stop api
   docker-compose up -d sockets
@@ -122,9 +113,6 @@ while [ "$1" != "" ]; do
       shift
       export WEB_BRANCH=$1
       web
-      ;;
-    -v | --version)
-      generate_version
       ;;
     -e | --env)
       get_env
