@@ -66,8 +66,8 @@ get_env() {
   OUTPUT=""
   shopt -s nullglob
   for ENV_FILE in env.d/.[^.]*.env; do
-      FILE_CONTENTS=$(grep -v "^\s*#" "$ENV_FILE" | sort | grep -v ^$)
-      OUTPUT="$OUTPUT|--|$ENV_FILE|--|\n$FILE_CONTENTS\n"
+    FILE_CONTENTS=$(grep -v "^\s*#" "$ENV_FILE" | sort | grep -v ^$)
+    OUTPUT="$OUTPUT|--|$ENV_FILE|--|\n$FILE_CONTENTS\n"
   done
   echo -e "$OUTPUT"
 }
@@ -88,46 +88,46 @@ fi
 WEB_BRANCH=primary
 while [ "$1" != "" ]; do
   case $1 in
-    -i | --initialise)
-      initialise
-      ;;
-    -u | --update)
-      update
-      ;;
-    -s | --start)
-      start
-      ;;
-    -S | --stop)
-      stop
-      ;;
-    -r | --restart)
-      restart
-      ;;
-    -R | --rebuild)
-      rebuild
-      ;;
-    -W | --wipe)
-      wipe_db
-      ;;
-    -w | --web)
-      shift
-      export WEB_BRANCH=$1
-      web
-      ;;
-    -e | --env)
-      get_env
-      ;;
-    -t | --reset-env)
-      shift
-      reset_env_from_template "$1"
-      ;;
-    -h | --help)
-      usage
-      ;;
-    *)
-      usage
-      exit 1
-      ;;
+  -i | --initialise)
+    initialise
+    ;;
+  -u | --update)
+    update
+    ;;
+  -s | --start)
+    start
+    ;;
+  -S | --stop)
+    stop
+    ;;
+  -r | --restart)
+    restart
+    ;;
+  -R | --rebuild)
+    rebuild
+    ;;
+  -W | --wipe)
+    wipe_db
+    ;;
+  -w | --web)
+    shift
+    export WEB_BRANCH=$1
+    web
+    ;;
+  -e | --env)
+    get_env
+    ;;
+  -t | --reset-env)
+    shift
+    reset_env_from_template "$1"
+    ;;
+  -h | --help)
+    usage
+    ;;
+  *)
+    usage
+    exit 1
+    ;;
   esac
   shift
 done
