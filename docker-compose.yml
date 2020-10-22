@@ -44,6 +44,8 @@ services:
       - rauthy_config:/root/config
     networks:
       - controller-network
+    ports:
+      - 3032:3031
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:3031/status" ]
       interval: 30s
