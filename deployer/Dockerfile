@@ -1,7 +1,7 @@
 FROM node:12.16.1-buster-slim
 
 RUN apt-get update \
-    && apt-get install -y bash net-tools curl vim \
+    && apt-get install -y bash net-tools curl vim cron \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
     && curl -L "https://github.com/docker/compose/releases/download/1.23.1/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose \

@@ -16,6 +16,7 @@ services:
     privileged: true
     volumes:
       - controller_base:/controller
+      - ./controller/scripts/cron.d:/etc/cron.d
       - "$DOCKER_BIN:/usr/bin/docker"
       - /var/run/docker.sock:/var/run/docker.sock
       - ./deployer:/app
