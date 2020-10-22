@@ -19,7 +19,6 @@ services:
       - ./controller/scripts/cron.d:/etc/cron.d
       - "$DOCKER_BIN:/usr/bin/docker"
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./deployer:/app
 
   nginx:
     image: nginx
