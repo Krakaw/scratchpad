@@ -4,6 +4,10 @@ const exec = util.promisify(require("child_process").exec);
 const {cleanBranch} = require("./branches");
 const {RELEASES_DIR} = process.env;
 
+function isValidLocalPath(branch, file) {
+    return isValidLocalBranch(branch) && fs.existsSync(`${RELEASES_DIR}/${cleanBranch(branch)}/${file}`);
+}
+
 function isValidLocalBranch(branch) {
     const dirs = getDirectories(RELEASES_DIR);
     const localBranch = cleanBranch(branch);
@@ -98,5 +102,6 @@ module.exports = {
     getDirStats,
     getDockerStatus,
     getDirectories,
-    isValidLocalBranch
+    isValidLocalBranch,
+    isValidLocalPath
 };

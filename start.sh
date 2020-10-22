@@ -9,7 +9,7 @@ if [[ -n "$REBUILD" ]]; then
 fi
 
 if [[ -n "$DEV" ]]; then
-  docker-compose up -f docker-compose.yml -f docker-compose.dev.yml up -d
+  docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
 else
   docker-compose up -d
 fi

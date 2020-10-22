@@ -73,7 +73,7 @@ get_env() {
 }
 
 reset_env_from_template() {
-  TEMPLATE_FILE="$1"
+  TEMPLATE_FILE="../../templates/env.d/$1"
   LOCAL_FILE="env.d/${TEMPLATE_FILE##*/}"
   cp "$TEMPLATE_FILE" "$LOCAL_FILE"
   sed -i "s|__DB_NAME__|$DB_NAME|g" "$LOCAL_FILE"

@@ -3,10 +3,10 @@ const util = require("util");
 const exec = util.promisify(require("child_process").exec);
 const express = require("express");
 const router = express.Router();
-const {getDirStats, getDockerStatus, readInstanceConfig, readInstanceVersions, getDirectories, isValidLocalBranch} = require("../helpers/instances");
+const {getDirStats, getDockerStatus, readInstanceConfig, readInstanceVersions, getDirectories, isValidLocalBranch, isValidLocalPath} = require("../helpers/instances");
 const {getBranchNames, getPackages, getGithubAuthHeaders, getPullRequestDetails} = require("../helpers/github");
 const {cleanBranch} = require("../helpers/branches");
-const {API_BRANCHES_URL, GITHUB_WEB_BRANCHES_URL, API_PULL_REQUEST_URL, GITHUB_GRAPHQL_PACKAGES_WEB, GITHUB_GRAPHQL_PACKAGES_API,RELEASES_DIR, DEBUG} = process.env;
+const {API_BRANCHES_URL, GITHUB_WEB_BRANCHES_URL, API_PULL_REQUEST_URL, GITHUB_GRAPHQL_PACKAGES_WEB, GITHUB_GRAPHQL_PACKAGES_API, RELEASES_DIR, DEBUG} = process.env;
 
 const branches = async function (req, res) {
     try {
@@ -92,8 +92,7 @@ const branches = async function (req, res) {
             releaseBranch.versions = versions;
         }
         return res.json({api: apiReleaseBranches, web: webBranches});
-    }
-    catch(e) {
+    } catch (e) {
         console.error(e)
         return res.status(500).json(e)
     }
@@ -142,8 +141,8 @@ const deleteScratch = async function (req, res) {
     return res.sendStatus(await executeInstanceScript(req.params.localBranch, "delete.sh"));
 };
 
-const getEnv = async function (req, res) {
-    const {stdout: env, stderr} = await executeInstanceScript(req.params.localBranch, "manage-instance.sh", ["--env"], true);
+const extractEnvValues = async function(localBranch) {
+    const {stdout: env, stderr} = await executeInstanceScript(localBranch, "manage-instance.sh", ["--env"], true);
     const results = {};
     const lines = env.split("\n");
     let currentFile = '';
@@ -165,39 +164,59 @@ const getEnv = async function (req, res) {
     Object.keys(results).forEach(key => {
         results[key] = results[key].join("\n");
     })
+    return results;
+}
+
+const getEnv = async function (req, res) {
+    const results = await extractEnvValues(req.params.localBranch)
     return res.json(results);
 };
 
-const setEnv = async function(req, res) {
-    const {api, web, cube} = req.body;
+const setEnv = async function (req, res) {
+    const {body = {}} = req;
     const localBranch = req.params.localBranch;
     if (!isValidLocalBranch(localBranch)) {
         return 401;
     }
-
     try {
-        const path = `${RELEASES_DIR}/${localBranch}`;
-        fs.writeFileSync(`${path}/.api.env`, api);
-        fs.writeFileSync(`${path}/.web.env`, web);
-        fs.writeFileSync(`${path}/.bn-cube.env`, cube);
+        for (let envFile in body) {
+            if (!isValidLocalPath(localBranch, envFile)) {
+                throw Error("Invalid file path")
+            }
+            const path = `${RELEASES_DIR}/${localBranch}/${envFile}`;
+            fs.writeFileSync(path, body[envFile]);
+        }
         executeInstanceScript(req.params.localBranch, "manage-instance.sh", ["--rebuild"], true);
-    } catch(err) {
+    } catch (err) {
         console.error(err);
         // An error occurred
         return res.sendStatus(500);
     }
+
+
     return res.sendStatus(200);
 };
 
 const resetEnv = async function (req, res) {
-    const {envs} = req.body;
+    let {envs = []} = req.body;
     const localBranch = req.params.localBranch;
     if (!isValidLocalBranch(localBranch)) {
         return 401;
     }
-    const validEnvs = ['api', 'web', 'bn-cube'];
+    for (let envFile in envs) {
+        if (!isValidLocalPath(localBranch, envFile)) {
+            return 401;
+        }
+    }
+
+    const currentEnvs = await extractEnvValues(req.params.localBranch);
+    const envFileNames = Object.keys(currentEnvs).map(f => f.replace('env.d/', ''));
+    if (envs.length === 0) {
+        envs = envFileNames;
+    }
+
     envs.forEach(env => {
-        if (!validEnvs.find(e => e===env)) {
+        if (!envFileNames.find(e => e === env)) {
             return;
         }
         executeInstanceScript(req.params.localBranch, "manage-instance.sh", ["--reset-env", env], true);
