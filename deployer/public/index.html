@@ -103,10 +103,11 @@
 
                     <td><span v-if="release.exists" class="badge badge-pill badge-primary">Deployed</span>
                         <span v-if="!release.exists" class="badge badge-pill badge-secondary">Not deployed</span></td>
-                    <td><select class="custom-select" v-model="linkToWeb[release.local]" style="max-width:100px">
-                        <option selected>Choose...</option>
-                        <option v-for="webBranch in webBranches" :value="webBranch">{{webBranch}}</option>
-                    </select>
+                    <td>
+                        <select class="custom-select" v-model="linkToWeb[release.local]" style="max-width:100px">
+                            <option selected>Choose...</option>
+                            <option v-for="webBranch in webBranches" :value="webBranch">{{webBranch}}</option>
+                        </select>
 
                         <button :disabled="!linkToWeb[release.local]" class="btn btn-outline-secondary" type="button"
                                 @click="linkWeb(release.local)">Link
@@ -236,6 +237,7 @@
                 api: [],
                 web: []
             },
+            images: {},
             envVars: false,
             envLoading: false,
             liveApi: {},
@@ -267,7 +269,7 @@
                 return sorted
             },
             webBranches() {
-                return this.releases.web;
+                return (this.images.web || []).map(i => i.version);
             },
 
         },
@@ -277,6 +279,13 @@
                 consoleMessages.unshift(JSON.stringify(msg));
                 this.$set(this, 'consoleMessages', [...consoleMessages]);
                 console.log(msg);
+            },
+            getImages() {
+                fetch(`${this.api}/images/*`).then(r => {
+                    return r.json();
+                }).then(r => {
+                    this.$set(this, 'images', r);
+                });
             },
             getReleases() {
                 fetch(`${this.api}/instances`).then(r => {
@@ -475,6 +484,7 @@
         },
         created() {
             this.getReleases();
+            this.getImages();
         }
     })
 </script>
