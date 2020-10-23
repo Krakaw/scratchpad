@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -x
+
 export timestamp=${timestamp:-$(date +'%Y-%m-%d_%H-%M-%S')}
 exec &>> >(tee -a "logs/$(basename $0)-$timestamp.txt") 2>> >(tee -a "logs/$(basename $0)-$timestamp.err")
 
@@ -20,10 +22,7 @@ initialise() {
 }
 
 start() {
-  docker-compose up -d sockets
-  docker-compose up -d logs
-  docker-compose up -d web
-  docker-compose up -d --no-deps api
+  docker-compose up -d
 }
 
 stop() {
@@ -57,9 +56,8 @@ web() {
 update() {
   touch .
   docker-compose pull
-  docker-compose stop api
-  docker-compose up -d sockets
-  docker-compose up -d --no-deps api
+  docker-compose down
+  docker compose up -d
 }
 
 get_env() {

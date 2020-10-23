@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -ex
 
 export timestamp=${timestamp:-$(date +'%Y-%m-%d_%H-%M-%S')}
 exec &>> >(tee -a "logs/$(basename $0)-$timestamp.txt") 2>> >(tee -a "logs/$(basename $0)-$timestamp.err")
@@ -128,6 +128,8 @@ echo "Initialising"
 
 # Build the web
 echo "Building the web ..."
-./manage-instance.sh --web "$WEB_BRANCH" --start
+./manage-instance.sh --web "$WEB_BRANCH"
 
+echo "Starting"
+./manage-instance.sh --start
 echo "Done."
