@@ -5,8 +5,8 @@ export timestamp=${timestamp:-$(date +'%Y-%m-%d_%H-%M-%S')}
 exec &>> >(tee -a "logs/$(basename $0)-$timestamp.txt") 2>> >(tee -a "logs/$(basename $0)-$timestamp.err")
 
 usage() {
-    echo "API Branch required"
-    echo "$0 --api api_branch_name [--name release_name_or_alias] [--web web_branch_name] [--db-prefix db_prefix]"
+  echo "API Branch required"
+  echo "$0 --api api_branch_name [--name release_name_or_alias] [--web web_branch_name] [--db-prefix db_prefix]"
 }
 
 if [[ $# -eq 0 ]]; then
@@ -21,37 +21,37 @@ TEMPLATES_DIR="${BASE_PATH}/templates"
 CONTROLLER_DIR="${BASE_PATH}/controller"
 API_BRANCH=
 while [ "$1" != "" ]; do
-    case $1 in
-    -a | --api)
-        shift
-        API_BRANCH=$1
-        ;;
-    -n | --name)
-        shift
-        RELEASE_NAME=$1
-        ;;
-    -w | --web)
-        shift
-        WEB_BRANCH=$1
-        ;;
-    -b | --build)
-        shift
-        BUILD_DIR=$1
-        ;;
-    -d | --db-prefix)
-        shift
-        DB_PREFIX=$1
-        ;;
-    -h | --help)
-        usage
-        exit
-        ;;
-    *)
-        usage
-        exit 1
-        ;;
-    esac
+  case $1 in
+  -a | --api)
     shift
+    API_BRANCH=$1
+    ;;
+  -n | --name)
+    shift
+    RELEASE_NAME=$1
+    ;;
+  -w | --web)
+    shift
+    WEB_BRANCH=$1
+    ;;
+  -b | --build)
+    shift
+    BUILD_DIR=$1
+    ;;
+  -d | --db-prefix)
+    shift
+    DB_PREFIX=$1
+    ;;
+  -h | --help)
+    usage
+    exit
+    ;;
+  *)
+    usage
+    exit 1
+    ;;
+  esac
+  shift
 done
 
 if [[ -z $API_BRANCH ]]; then
@@ -102,7 +102,7 @@ ln -sr "../../controller/build-docker-compose.sh" "./"
 #Manually link the template fallback index.html
 ln -sr "../../templates/building.html" "$BUILD_DIR/"
 # Build the source file
-cat << EOM > docker-source.sh
+cat <<EOM >docker-source.sh
 export HOST_RELEASE_PATH=$HOST_RELEASE_PATH
 export RELEASE_NAME=$RELEASE_NAME
 export BASE_RELEASE_PATH=$BASE_RELEASE_PATH
@@ -120,12 +120,14 @@ source docker-source.sh
 shopt -s nullglob
 for GENERATE_ENV in ../../templates/env.d/.[^.]*.env; do
   echo "Generate $GENERATE_ENV"
-  ./manage-instance.sh --reset-env "$GENERATE_ENV"
+  ./manage-instance.sh --reset-env "${GENERATE_ENV##*/}"
 done
+
+echo "Initialising"
+./manage-instance.sh --initialise
 
 # Build the web
 echo "Building the web ..."
-./manage-instance.sh --initialise
 ./manage-instance.sh --web "$WEB_BRANCH" --start
 
 echo "Done."
