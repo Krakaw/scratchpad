@@ -55,7 +55,7 @@ update() {
   touch .
   docker-compose pull
   docker-compose down
-  docker compose up -d
+  docker-compose up -d
 }
 
 get_env() {
