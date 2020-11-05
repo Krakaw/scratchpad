@@ -4,8 +4,8 @@ module.exports = {
     es2021: true
   },
   extends: [
-    'plugin:react/recommended',
-    'standard'
+    // 'plugin:react/recommended',
+    // 'standard'
   ],
   parserOptions: {
     ecmaFeatures: {
@@ -18,5 +18,6 @@ module.exports = {
     'react'
   ],
   rules: {
+    'no-unused-vars': "warn",
   }
 }
