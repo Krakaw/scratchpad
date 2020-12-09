@@ -18,14 +18,19 @@ function getGithubAuthHeaders() {
     };
 }
 
-async function getPackages(owner, name) {
-
+async function getPackageVersions(owner, name, offset, limit = 100) {
+    let after = offset ? `, after: "${offset}"` : '';
     const result = await graphqlWithAuth(`
     query {
         repository(owner:"${owner}", name:"${name}"){
             packages(first:1) {
                 nodes {
-                    versions(last:100) {
+                    versions(first:${limit}${after}) {
+                        pageInfo {
+                            startCursor
+                            endCursor
+                            hasNextPage
+                        }
                         nodes {
                             id
                             version
@@ -38,7 +43,9 @@ async function getPackages(owner, name) {
         }
     }
     `);
-    return result.repository.packages.nodes.map(n => {
+    let pageInfo = {hasNextPage: false};
+    const items = result.repository.packages.nodes.map(n => {
+        pageInfo = n.versions.pageInfo
         return n.versions.nodes.map(vn => {
             vn.parent_id = n.id;
             vn.parent_name = n.name;
@@ -47,6 +54,19 @@ async function getPackages(owner, name) {
     }).flat().map(v => {
         return v
     });
+    return [pageInfo, items];
+}
+
+async function getPackages(owner, name) {
+    let result = [];
+    let pageInfo = {endCursor: null, hasNextPage: true};
+    while (pageInfo.hasNextPage) {
+        const offset = pageInfo.endCursor;
+        const [returnedPageInfo, items] = await getPackageVersions(owner, name, offset);
+        pageInfo = returnedPageInfo;
+        result = result.concat(items)
+    }
+    return result;
 }
 
 async function deletePackage(packageId) {
@@ -97,6 +117,13 @@ async function getBranchNames(url, headers) {
     let branchNames = rawData.map(i => i.name || i.head.ref);
     branchNames.sort();
     return branchNames;
+}
+
+async function getWorkflows(owner, repo) {
+    const url = `https://api.github.com/repos/${owner}/${repo}/actions/workflows`;
+    let {data} = await axios.get(url, {headers: getGithubAuthHeaders()});
+    return data;
+
 }
 
 async function getPullRequestDetails(url, headers) {
@@ -154,6 +181,7 @@ async function getPullRequestDetails(url, headers) {
 module.exports = {
     getPackages,
     deletePackage,
+    getWorkflows,
     getBranchNames,
     getPullRequestDetails,
     getGithubAuthHeaders,
