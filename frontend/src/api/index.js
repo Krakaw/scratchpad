@@ -18,6 +18,11 @@ export const getPackages = async (owner, repo) => {
     return await (await fetch(url)).json();
 }
 
+export const getBranches = async (owner, repo) => {
+    const url = encodeURI(`${serverUrl}/github/branches?owner=${owner}&repo=${repo}`);
+    return await (await fetch(url)).json();
+}
+
 export const deletePackage = async (id) => {
     const url = encodeURI(`${serverUrl}/github/package/${id}`);
     return await fetch(url, {method: 'DELETE'});

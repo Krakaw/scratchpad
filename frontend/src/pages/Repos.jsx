@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from 'react'
-import {getPackages, getRepos, getWorkflows,deletePackage} from "../api";
+import {getPackages, getRepos, getWorkflows,deletePackage, getBranches} from "../api";
 
 function Repos() {
     const [selectedRepo, setSelectedRepo] = useState();
@@ -19,12 +19,16 @@ function Repos() {
         const [owner, repo] = repoName.split('/');
         getWorkflows(owner,repo).then(workflowResponse => {
             const workflows = workflowResponse.workflows;
-            workflows.sort((a,b) => a.name - b.name)
+            workflows.sort((a,b) => a.name > b.name ? 1 : b.name > a.name ? -1 : 0)
             setWorkflows(workflows);
         });
         getPackages(owner, repo).then(packageResponse => {
             packageResponse.sort((a,b) => a.version > b.version ? 1 : b.version > a.version ? -1 : 0)
             setPackages(packageResponse)
+        });
+        getBranches(owner, repo).then(branchesResponse => {
+            branchesResponse.sort()
+            setBranches(branchesResponse);
         })
 
     }
@@ -34,9 +38,11 @@ function Repos() {
         packages.splice(packages.findIndex(p => p.id === id), 1)
         setPackages([...packages]);
     }
+
     return (
         <div className="row">
             <div className="col-sm-3">
+                <h3>Repositories</h3>
                 {repos.map(repo => <div key={repo} className="list-group">
                     <a href="#" onClick={() => selectRepo(repo)}
                        className="list-group-item list-group-item-action"
@@ -46,6 +52,12 @@ function Repos() {
             <div className="col-sm-9">
                 <div>
                     <h3>Branches</h3>
+                    <ul className="list-group">
+                        {branches.map(branch => <li style={{display: 'flex'}} key={branch} className="list-group-item">
+                            {branch}
+                            <span style={{flex:1}}></span>
+                        </li>)}
+                    </ul>
                 </div>
                 <div>
                     <h3>Packages</h3>
