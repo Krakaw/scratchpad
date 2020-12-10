@@ -20,7 +20,12 @@ initialise() {
 }
 
 start() {
+  shopt -s nullglob
   docker-compose up -d
+  for SCRIPT in ./scripts/up.d/*.sh; do
+    echo "Running script $SCRIPT"
+    bash "$SCRIPT" || echo "Error in $SCRIPT"
+  done
 }
 
 stop() {
@@ -55,7 +60,7 @@ update() {
   touch .
   docker-compose pull
   docker-compose down
-  docker-compose up -d
+  start
 }
 
 get_env() {
