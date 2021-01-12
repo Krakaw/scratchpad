@@ -23,7 +23,7 @@ async function getPackageVersions(owner, name, offset, limit = 100) {
     const result = await graphqlWithAuth(`
     query {
         repository(owner:"${owner}", name:"${name}"){
-            packages(first:1) {
+            packages(first:100) {
                 nodes {
                     versions(first:${limit}${after}) {
                         pageInfo {
