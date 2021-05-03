@@ -19,12 +19,12 @@ async function deployFromQuay(req, res) {
 }
 
 async function deployBranch(branch, branchName) {
-    console.log("Starting deploy for", branch, "as", branchName || branch);
+    branchName = branchName || cleanBranch(branch);
+    console.log("Starting deploy for", branch, "as", branchName);
 
     let resultText = `Deploying ${branch}`;
     const {stdout, stderr} = await exec(
-        `cd ${RELEASE_BASE} && ./controller/create-scratch.sh -a '${branch}' -n '${branchName ||
-        branch}'`
+        `cd ${RELEASE_BASE} && ./controller/create-scratch.sh -a '${branch}' -n '${branchName}'`
     );
     if (stderr) {
         console.error(resultText, "FAILED");
