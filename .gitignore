@@ -3,3 +3,4 @@ node_modules/
 .controller.env
 .pg.env
 controller/docker-compose.built.yml
+deployer/.env

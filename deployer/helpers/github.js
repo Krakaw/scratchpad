@@ -18,50 +18,39 @@ function getGithubAuthHeaders() {
     };
 }
 
-async function getPackageVersions(owner, name, offset, limit = 100) {
-    let after = offset ? `, after: "${offset}"` : '';
-    const result = await graphqlWithAuth(`
-    query {
-        repository(owner:"${owner}", name:"${name}"){
-            packages(first:100) {
-                nodes {
-                    versions(first:${limit}${after}) {
-                        pageInfo {
-                            startCursor
-                            endCursor
-                            hasNextPage
-                        }
-                        nodes {
-                            id
-                            version
-                        }
-                    }
-                    name
-                    id
-                }
-            }
-        }
-    }
-    `);
-    let pageInfo = {hasNextPage: false};
-    const items = result.repository.packages.nodes.map(n => {
-        pageInfo = n.versions.pageInfo
-        return n.versions.nodes.map(vn => {
-            vn.parent_id = n.id;
-            vn.parent_name = n.name;
-            return vn
-        })
-    }).flat().map(v => {
-        return v
+async function getPackageVersions(owner, name, offset = 1, limit = 100) {
+    const octokit = new Octokit({
+        auth: GITHUB_PERSONAL_ACCESS_TOKEN,
     });
+
+    const r = await octokit.request('GET https://api.github.com/orgs/{owner}/packages/container/{name}/versions', {
+        name,
+        owner,
+        per_page: limit,
+        page: offset
+    });
+    const next = r.headers.link.match(/\<https:\/\/.*page=(\d+)\>; rel="next"/);
+    let nextPage;
+    if (next && next[1]) {
+        nextPage = +next[1];
+    }
+    const items = r.data.map(d => {
+        const {metadata = {container: {}}} = d;
+        const {tags = []} = metadata.container;
+        return {
+            id: d.id,
+            name: tags.join(' ')
+        };
+    })
+    let pageInfo = {nextPage};
     return [pageInfo, items];
 }
 
 async function getPackages(owner, name) {
     let result = [];
-    let pageInfo = {endCursor: null, hasNextPage: true};
-    while (pageInfo.hasNextPage) {
-        const offset = pageInfo.endCursor;
+    let pageInfo = {nextPage:1};
+    while (pageInfo.nextPage) {
+        const offset = pageInfo.nextPage;
         const [returnedPageInfo, items] = await getPackageVersions(owner, name, offset);
         pageInfo = returnedPageInfo;
         result = result.concat(items)
