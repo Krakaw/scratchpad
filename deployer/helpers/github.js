@@ -47,12 +47,15 @@ async function getPackageVersions(owner, name, offset = 1, limit = 100) {
     if (next && next[1]) {
         nextPage = +next[1];
     }
-    const items = r.data.map(d => {
-        const {metadata = {container: {}}} = d;
+    const getBranchName = (data) => {
+        const {metadata = {container: {}}} = data;
         const {tags = []} = metadata.container;
+        return tags.join(' ').trim();
+    }
+    const items = r.data.filter(d => getBranchName(d) !== '').map(d => {
         return {
             id: d.id,
-            name: tags.join(' ')
+            name: getBranchName(d)
         };
     })
     let pageInfo = {nextPage};
