@@ -18,6 +18,19 @@ function getGithubAuthHeaders() {
     };
 }
 
+async function getPackageDetailsForOrg(owner) {
+    const octokit = new Octokit({
+        auth: GITHUB_PERSONAL_ACCESS_TOKEN,
+    });
+
+    const r = await octokit.request('GET https://api.github.com/orgs/{owner}/packages', {
+        owner,
+        package_type: 'container',
+
+    });
+    return r;
+}
+
 async function getPackageVersions(owner, name, offset = 1, limit = 100) {
     const octokit = new Octokit({
         auth: GITHUB_PERSONAL_ACCESS_TOKEN,

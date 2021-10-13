@@ -20,10 +20,10 @@ const deleteImage = async function (req, res) {
 }
 
 const getImages = async function (req, res) {
-    const [api_owner, api_package, _a] = GITHUB_GRAPHQL_PACKAGES_API.split('/');
-    const api = await getPackages(api_owner, api_package);
-    const [web_owner, web_package, _w] = GITHUB_GRAPHQL_PACKAGES_WEB.split('/');
-    const web = await getPackages(web_owner, web_package);
+    const [api_owner, _api_package, ...apiPackageName] = GITHUB_GRAPHQL_PACKAGES_API.split('/');
+    const api = await getPackages(api_owner, apiPackageName.join('/'));
+    const [web_owner, _web_package, ...webPackageName] = GITHUB_GRAPHQL_PACKAGES_WEB.split('/');
+    const web = await getPackages(web_owner, webPackageName.join('/'));
 
     return res.json({api, web})
 }
