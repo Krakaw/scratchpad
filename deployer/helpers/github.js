@@ -137,6 +137,7 @@ async function getPullRequestDetails(url, headers) {
     let result = {};
     const urlRegexp = /\b((?:[a-z][\w-]+:(?:\/{1,3}|[a-z0-9%])|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}\/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’]))/gi;
 
+
     await Promise.all(branches.map(async branch => {
         //console.log(branch);
         let {
@@ -148,11 +149,10 @@ async function getPullRequestDetails(url, headers) {
             state = "",
             html_url: githubUrl = ""
         } = branch;
-        //console.log(statuses_url);
         let {data} = await axios.get(statuses_url, {headers});
-        // console.log(data);
         let {state: buildStatus, description: buildDescription, updated_at: lastBuild, target_url: buildUrl} = data.length > 0 ? data[0] : {};
 
+        body = body || '';
         let {ref: branchName} = head;
         labels = labels.map(label => ({name: label.name, color: label.color}));
         let urls = (body.match(urlRegexp) || []).filter(
