@@ -44,7 +44,7 @@ const branches = async function (req, res) {
                 local: localBranch,
                 exists: dirs.indexOf(localBranch) > -1,
                 existsOnSourceRepo: apiRemoteBranches.indexOf(branch) > -1,
-                hasDockerImage: !!apiDockerImages.find(d => cleanBranch(d.version) === localBranch),
+                hasDockerImage: !!apiDockerImages.find(d => cleanBranch(d.name) === localBranch),
                 ports: {},
                 createdAt,
                 extra: pullRequestDetails[branch] || {},
