@@ -49,6 +49,7 @@ wipe_db() {
 }
 
 web() {
+  [ ! -d "$BUILD_DIR/build" ] && mkdir "$BUILD_DIR/build"
   rm -rf "$BUILD_DIR/build/*"
   docker-compose pull web
   docker-compose up --no-deps web
