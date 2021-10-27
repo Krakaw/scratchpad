@@ -92,11 +92,11 @@ const branches = async function (req, res) {
                 console.error("Failed to read versions for", releaseBranch.local);
             }
 
+            releaseBranch.config = config;
             releaseBranch.versions = versions;
         }
         return res.json({api: apiReleaseBranches, web: webBranches});
     } catch (e) {
-        console.error(e)
         return res.status(500).json(e)
     }
 };

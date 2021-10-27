@@ -129,7 +129,7 @@
                                     {{release.exists ?
                                         'Re-deploy' : 'Deploy'}}
                                 </button>
-                                <button :disabled="!release.exists" @click="clone(release.local)" class="dropdown-item"
+                                <button :disabled="!release.exists" @click="clone(release.config.API_BRANCH)" class="dropdown-item"
                                         title="Create a clone of this environment">
                                     Clone
                                 </button>
