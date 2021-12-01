@@ -1,5 +1,5 @@
   pg:
-    image: postgres:12.4
+    image: postgres
     command: postgres -c 'shared_buffers=256MB' -c 'max_connections=200'
     restart: unless-stopped
     env_file: .pg.env
