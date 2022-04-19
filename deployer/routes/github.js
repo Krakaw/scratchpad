@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const axios = require("axios");
-const {getGithubAuthHeaders, getWorkflows, getPackages, deletePackage, getBranchNames, getPullRequestDetails} = require("../helpers/github");
+const {getGithubAuthHeaders, getWorkflows, getPackages, deletePackage, getBranchNames, getPullRequestDetails, getPackageDetailsForOrg} = require("../helpers/github");
 const {GITHUB_API_RELEASE_BASE_URL, GITHUB_REPOS} = process.env;
 
 const deleteRemoteBranch = async function (req, res) {
@@ -47,11 +47,18 @@ const getRepos = async function(req,res) {
     return res.json(GITHUB_REPOS.split('|'));
 }
 
+const getDetails = async function(req,res) {
+    const {owner} = req.query;
+    const data = await getPackageDetailsForOrg(owner);
+    return res.json(data);
+}
+
 router.delete('/:remoteBranch', deleteRemoteBranch);
 router.get('/branches', getRepoBranches);
 router.get('/prs', getRepoPrs);
 router.get('/repos', getRepos);
 router.get('/workflows', getRepoWorkflows);
 router.get('/packages', getRepoPackages);
+router.get('/packageDetails', getDetails)
 router.delete('/package/:id', deleteRepoPackage);
 module.exports = router;

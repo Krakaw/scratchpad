@@ -36,12 +36,14 @@ async function getPackageVersions(owner, name, offset = 1, limit = 100) {
         auth: GITHUB_PERSONAL_ACCESS_TOKEN,
     });
 
-    const r = await octokit.request('GET https://api.github.com/orgs/{owner}/packages/container/{name}/versions', {
+    const r = await octokit.request('/orgs/:owner/packages/docker/:name/versions', {
+        method: 'GET',
         name,
         owner,
         per_page: limit,
         page: offset
     });
+    console.log(JSON.stringify(r, null, 2));
     const next = r.headers.link.match(/\<https:\/\/.*page=(\d+)\>; rel="next"/);
     let nextPage;
     if (next && next[1]) {
@@ -82,6 +84,7 @@ async function deletePackage(packageId) {
         },
         method: 'POST'
     })
+    console.log(packageId)
     const result = await graphqlWithAuth(`
        mutation {
             deletePackageVersion( input: { packageVersionId: "${packageId}" }) { success }            
@@ -184,6 +187,7 @@ async function getPullRequestDetails(url, headers) {
 }
 
 module.exports = {
+    getPackageDetailsForOrg,
     getPackages,
     deletePackage,
     getWorkflows,
