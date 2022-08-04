@@ -5,3 +5,6 @@ services:
 networks:
   controller-network:
     external: true
+
+volumes:
+  {VOLUMES}

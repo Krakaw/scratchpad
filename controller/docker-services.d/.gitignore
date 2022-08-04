@@ -2,3 +2,4 @@
 */
 !postgres.yml
 !.gitignore
+!volumes/
