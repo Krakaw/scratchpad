@@ -49,7 +49,6 @@ async function getPackageVersions(owner, name, offset = 1, limit = 100) {
       page: offset,
     }
   );
-  console.log(r)
   const next = (r.headers.link || '').match(/\<https:\/\/.*page=(\d+)\>; rel="next"/);
   let nextPage;
   if (next && next[1]) {
