@@ -2,10 +2,10 @@ const util = require("util");
 const exec = util.promisify(require("child_process").exec);
 const express = require("express");
 const router = express.Router();
-const {cleanBranch} = require("../helpers/branches");
-const {getDirectories} = require("../helpers/instances");
+const { cleanBranch } = require("../helpers/branches");
+const { getDirectories } = require("../helpers/instances");
 
-const {RELEASES_DIR, RELEASE_BASE, DEBUG} = process.env;
+const { RELEASES_DIR, RELEASE_BASE, DEBUG } = process.env;
 
 const deployEndpoint = async function (req, res) {
     deployBranch(req.body.branch);
@@ -19,11 +19,11 @@ async function deployFromQuay(req, res) {
 }
 
 async function deployBranch(branch, branchName) {
-    branchName = branchName || cleanBranch(branch);
+    branchName = (branchName || cleanBranch(branch)).toLowerCase();
     console.log("Starting deploy for", branch, "as", branchName);
 
     let resultText = `Deploying ${branch}`;
-    const {stdout, stderr} = await exec(
+    const { stdout, stderr } = await exec(
         `cd ${RELEASE_BASE} && ./controller/create-scratch.sh -a '${branch}' -n '${branchName}'`
     );
     if (stderr) {
