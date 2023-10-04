@@ -21,7 +21,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
 
   nginx:
-    image: nginx
+    image: nginx:1.21
     restart: unless-stopped
     env_file:
       - .controller.env
