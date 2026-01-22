@@ -36,7 +36,7 @@ pub async fn dashboard(State(state): State<SharedState>) -> Html<String> {
 
             format!(
                 r#"
-                <tr class="border-b border-gray-700 hover:bg-gray-800">
+                <tr class="border-b border-gray-700 hover:bg-gray-800" data-name="{}" data-branch="{}" data-status="{}">
                     <td class="px-4 py-3">
                         <a href="/scratches/{}" class="text-blue-400 hover:underline">{}</a>
                     </td>
@@ -62,6 +62,9 @@ pub async fn dashboard(State(state): State<SharedState>) -> Html<String> {
                     </td>
                 </tr>
                 "#,
+                s.name,
+                s.branch,
+                s.status,
                 s.name,
                 s.name,
                 s.branch,
@@ -92,69 +95,142 @@ pub async fn dashboard(State(state): State<SharedState>) -> Html<String> {
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
 </head>
 <body class="bg-gray-900 text-gray-100 min-h-screen">
-    <div class="container mx-auto px-4 py-8">
-        <header class="mb-8">
-            <h1 class="text-3xl font-bold mb-2">Scratchpad</h1>
-            <p class="text-gray-400">Manage your scratch environments</p>
-        </header>
-
-        <div class="mb-6 flex justify-between items-center">
-            <div>
-                <span class="text-sm text-gray-400">{} scratches</span>
-            </div>
-            <div class="flex space-x-4">
-                <a 
-                    href="/scratches/create"
-                    class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded font-medium"
-                >Create Scratch</a>
-                <a 
-                    href="/services"
-                    class="px-4 py-2 bg-orange-600 hover:bg-orange-700 rounded font-medium"
-                >Services</a>
-                <a 
-                    href="/config"
-                    class="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded font-medium"
-                >Configuration</a>
-                <button 
-                    class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded font-medium"
-                    hx-get="/"
-                    hx-target="body"
-                >Refresh</button>
+    <div class="flex h-screen">
+        <!-- Sidebar Navigation -->
+        <div class="w-64 bg-gray-800 border-r border-gray-700 overflow-y-auto">
+            <div class="p-6">
+                <h1 class="text-2xl font-bold mb-8">Scratchpad</h1>
+                <nav class="space-y-4">
+                    <a href="/" class="block px-4 py-2 bg-blue-600 rounded font-medium">Dashboard</a>
+                    <a href="/scratches/create" class="block px-4 py-2 bg-green-600 hover:bg-green-700 rounded font-medium">+ Create Scratch</a>
+                    <a href="/services" class="block px-4 py-2 bg-orange-600 hover:bg-orange-700 rounded font-medium">Services</a>
+                    <a href="/config" class="block px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded font-medium">Configuration</a>
+                    <button 
+                        class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded font-medium"
+                        hx-get="/"
+                        hx-target="body"
+                    >Refresh</button>
+                </nav>
             </div>
         </div>
 
-        <div class="bg-gray-800 rounded-lg overflow-hidden shadow-xl">
-            <table class="w-full">
-                <thead class="bg-gray-700">
-                    <tr>
-                        <th class="px-4 py-3 text-left text-sm font-semibold">Name</th>
-                        <th class="px-4 py-3 text-left text-sm font-semibold">Branch</th>
-                        <th class="px-4 py-3 text-left text-sm font-semibold">Status</th>
-                        <th class="px-4 py-3 text-left text-sm font-semibold">Services</th>
-                        <th class="px-4 py-3 text-left text-sm font-semibold">URL</th>
-                        <th class="px-4 py-3 text-left text-sm font-semibold">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {}
-                </tbody>
-            </table>
-        </div>
+        <!-- Main Content -->
+        <div class="flex-1 overflow-auto">
+            <div class="container mx-auto px-8 py-8 max-w-6xl">
+                <header class="mb-8">
+                    <h2 class="text-3xl font-bold mb-2">Scratches</h2>
+                    <p class="text-gray-400">Manage your scratch environments - {} total</p>
+                </header>
 
-        <div class="mt-8 bg-gray-800 rounded-lg p-6">
-            <h2 class="text-xl font-semibold mb-4">Shared Services</h2>
-            <div class="flex space-x-4">
-                <button 
-                    class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded"
-                    hx-post="/api/services/start"
-                >Start All</button>
-                <button 
-                    class="px-4 py-2 bg-red-600 hover:bg-red-700 rounded"
-                    hx-post="/api/services/stop"
-                >Stop All</button>
+                <!-- Search and Filter -->
+                <div class="mb-6 bg-gray-800 rounded-lg p-4">
+                    <input 
+                        type="text" 
+                        id="search-input"
+                        placeholder="Search by name, branch, or status..."
+                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
+                    />
+                    <div class="mt-3 flex space-x-2">
+                        <button class="px-3 py-1 text-sm bg-gray-700 hover:bg-gray-600 rounded filter-btn" data-filter="all">All</button>
+                        <button class="px-3 py-1 text-sm bg-gray-700 hover:bg-gray-600 rounded filter-btn" data-filter="running">Running</button>
+                        <button class="px-3 py-1 text-sm bg-gray-700 hover:bg-gray-600 rounded filter-btn" data-filter="stopped">Stopped</button>
+                    </div>
+                </div>
+
+                <!-- Scratches Table -->
+                <div class="bg-gray-800 rounded-lg overflow-hidden shadow-xl">
+                    <table class="w-full">
+                        <thead class="bg-gray-700">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-sm font-semibold">Name</th>
+                                <th class="px-4 py-3 text-left text-sm font-semibold">Branch</th>
+                                <th class="px-4 py-3 text-left text-sm font-semibold">Status</th>
+                                <th class="px-4 py-3 text-left text-sm font-semibold">Services</th>
+                                <th class="px-4 py-3 text-left text-sm font-semibold">URL</th>
+                                <th class="px-4 py-3 text-left text-sm font-semibold">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="scratches-tbody">
+                            {}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Empty State -->
+                <div id="empty-state" class="hidden text-center py-12">
+                    <p class="text-gray-400 text-lg mb-4">No scratches found</p>
+                    <a href="/scratches/create" class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded font-medium">Create your first scratch</a>
+                </div>
+
+                <!-- Shared Services Section -->
+                <div class="mt-8 bg-gray-800 rounded-lg p-6">
+                    <h3 class="text-xl font-semibold mb-4">Shared Services</h3>
+                    <div class="flex space-x-4">
+                        <button 
+                            class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded"
+                            hx-post="/api/services/start"
+                        >Start All</button>
+                        <button 
+                            class="px-4 py-2 bg-red-600 hover:bg-red-700 rounded"
+                            hx-post="/api/services/stop"
+                        >Stop All</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
+
+    <script>
+        (function() {{
+            const searchInput = document.getElementById('search-input');
+            const filterBtns = document.querySelectorAll('.filter-btn');
+            const tbody = document.getElementById('scratches-tbody');
+            const emptyState = document.getElementById('empty-state');
+            let currentFilter = 'all';
+
+            function filterTable() {{
+                const searchTerm = searchInput.value.toLowerCase();
+                const rows = tbody.querySelectorAll('tr');
+                let visibleCount = 0;
+
+                rows.forEach(row => {{
+                    let match = true;
+
+                    // Search filter
+                    if (searchTerm) {{
+                        const name = row.dataset.name?.toLowerCase() || '';
+                        const branch = row.dataset.branch?.toLowerCase() || '';
+                        match = name.includes(searchTerm) || branch.includes(searchTerm);
+                    }}
+
+                    // Status filter
+                    if (match && currentFilter !== 'all') {{
+                        const status = row.dataset.status || '';
+                        match = status === currentFilter;
+                    }}
+
+                    row.style.display = match ? '' : 'none';
+                    if (match) visibleCount++;
+                }});
+
+                emptyState.style.display = visibleCount === 0 ? 'block' : 'none';
+            }}
+
+            searchInput.addEventListener('input', filterTable);
+
+            filterBtns.forEach(btn => {{
+                btn.addEventListener('click', () => {{
+                    filterBtns.forEach(b => b.classList.remove('bg-blue-600'));
+                    btn.classList.add('bg-blue-600');
+                    currentFilter = btn.dataset.filter;
+                    filterTable();
+                }});
+            }});
+
+            // Set initial active filter
+            filterBtns[0].classList.add('bg-blue-600');
+        }})();
+    </script>
 </body>
 </html>
         "#,
