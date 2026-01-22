@@ -335,9 +335,16 @@ pub async fn update_config(
         state.config.github = Some(github);
     }
     
-    // TODO: Persist config to file
+    // Persist config to file
+    if let Err(e) = crate::config::save_config(&state.config) {
+        tracing::error!("Failed to save config: {}", e);
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiResponse::<()>::err("Failed to save configuration")),
+        ).into_response();
+    }
     
-    (StatusCode::OK, Json(ApiResponse::ok("Config updated")))
+    (StatusCode::OK, Json(ApiResponse::ok("Config updated and persisted"))).into_response()
 }
 
 pub async fn start_service(

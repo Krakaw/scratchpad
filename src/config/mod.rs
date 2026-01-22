@@ -3,5 +3,5 @@
 pub mod loader;
 mod schema;
 
-pub use loader::load_config;
+pub use loader::{load_config, save_config};
 pub use schema::*;

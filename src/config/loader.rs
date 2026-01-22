@@ -4,7 +4,7 @@ use crate::error::{Error, Result};
 use regex::Regex;
 use std::env;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use super::Config;
 
@@ -16,12 +16,29 @@ pub fn load_config() -> Result<Config> {
     load_config_from_path(&config_path)
 }
 
+/// Get the path to the configuration file
+pub fn get_config_path() -> Result<PathBuf> {
+    find_config_file()
+}
+
 /// Load configuration from a specific path
 pub fn load_config_from_path(path: &Path) -> Result<Config> {
     let content = fs::read_to_string(path).map_err(|_| Error::ConfigNotFound)?;
     let content = interpolate_env_vars(&content);
     let config: Config = toml::from_str(&content)?;
     Ok(config)
+}
+
+/// Save configuration to the config file
+pub fn save_config(config: &Config) -> Result<()> {
+    let config_path = find_config_file()?;
+    let toml_content = toml::to_string_pretty(config)
+        .map_err(|e| Error::Config(format!("Failed to serialize config: {}", e)))?;
+
+    fs::write(&config_path, toml_content)
+        .map_err(|e| Error::Config(format!("Failed to write config file: {}", e)))?;
+
+    Ok(())
 }
 
 /// Find the configuration file, searching upward from current directory
