@@ -248,13 +248,120 @@ pub async fn scratch_detail(
         <div class="mt-8 bg-gray-800 rounded-lg p-6">
             <h2 class="text-xl font-semibold mb-4">Logs</h2>
             <div 
+                id="logs-container"
                 class="bg-gray-900 rounded p-4 font-mono text-sm h-96 overflow-auto"
-                hx-get="/api/scratches/{}/logs?tail=200"
-                hx-trigger="load, every 5s"
-                hx-swap="innerHTML"
             >
-                Loading logs...
+                <div class="text-gray-500">Loading initial logs...</div>
             </div>
+            <script>
+                (function() {{
+                    const container = document.getElementById('logs-container');
+                    const scratchName = '{}';
+                    let ws = null;
+                    let pingInterval = null;
+                    
+                    function displayLog(timestamp, service, line) {{
+                        const time_str = new Date(timestamp).toLocaleTimeString();
+                        const service_str = service ? ` [${{service}}]` : '';
+                        const logDiv = document.createElement('div');
+                        logDiv.textContent = `${{time_str}}${{service_str}}: ${{line}}`;
+                        logDiv.className = 'text-gray-300';
+                        container.appendChild(logDiv);
+                        
+                        // Keep only last 500 lines for performance
+                        const lines = container.querySelectorAll('div:not(:first-child)');
+                        if (lines.length > 500) {{
+                            lines[0].remove();
+                        }}
+                        
+                        // Auto-scroll to bottom
+                        container.scrollTop = container.scrollHeight;
+                    }}
+                    
+                    function fetchInitialLogs() {{
+                        fetch(`/api/scratches/${{scratchName}}/logs?tail=200`)
+                            .then(r => r.json())
+                            .then(data => {{
+                                if (data.success && data.data) {{
+                                    container.innerHTML = '';
+                                    data.data.forEach(line => {{
+                                        const logDiv = document.createElement('div');
+                                        logDiv.textContent = line;
+                                        logDiv.className = 'text-gray-300';
+                                        container.appendChild(logDiv);
+                                    }});
+                                }}
+                            }})
+                            .catch(e => {{
+                                console.error('Failed to fetch initial logs:', e);
+                                container.innerHTML = '<div class="text-red-500">Failed to load initial logs</div>';
+                            }});
+                    }}
+                    
+                    function connectWebSocket() {{
+                        ws = new WebSocket(`${{window.location.protocol === 'https:' ? 'wss:' : 'ws:'}}//${{window.location.host}}/ws`);
+                        
+                        ws.onopen = function() {{
+                            console.log('WebSocket connected');
+                            // Subscribe to logs for this scratch
+                            const msg = {{
+                                type: 'Subscribe',
+                                channels: [`logs:${{scratchName}}`]
+                            }};
+                            ws.send(JSON.stringify(msg));
+                            
+                            // Start keep-alive pings
+                            if (pingInterval) clearInterval(pingInterval);
+                            pingInterval = setInterval(() => {{
+                                if (ws && ws.readyState === WebSocket.OPEN) {{
+                                    ws.send(JSON.stringify({{ type: 'Ping' }}));
+                                }}
+                            }}, 30000);
+                        }};
+                        
+                        ws.onmessage = function(event) {{
+                            const msg = JSON.parse(event.data);
+                            
+                            if (msg.type === 'Log') {{
+                                displayLog(msg.timestamp, msg.service, msg.line);
+                            }} else if (msg.type === 'Subscribed') {{
+                                if (container.textContent.includes('Loading initial logs')) {{
+                                    container.innerHTML = '<div class="text-gray-400">Waiting for logs...</div>';
+                                }}
+                            }} else if (msg.type === 'Error') {{
+                                console.error('WebSocket error message:', msg.message);
+                            }} else if (msg.type === 'Pong') {{
+                                // Keep-alive response
+                            }}
+                        }};
+                        
+                        ws.onerror = function(error) {{
+                            console.error('WebSocket error:', error);
+                            const errorDiv = document.createElement('div');
+                            errorDiv.textContent = 'Connection error. Attempting to reconnect...';
+                            errorDiv.className = 'text-red-500';
+                            container.appendChild(errorDiv);
+                        }};
+                        
+                        ws.onclose = function() {{
+                            console.log('WebSocket disconnected, attempting to reconnect in 3s...');
+                            if (pingInterval) clearInterval(pingInterval);
+                            // Attempt to reconnect after 3 seconds
+                            setTimeout(connectWebSocket, 3000);
+                        }};
+                    }}
+                    
+                    // Load initial logs and connect WebSocket
+                    fetchInitialLogs();
+                    setTimeout(connectWebSocket, 500);
+                    
+                    // Cleanup on page unload
+                    window.addEventListener('beforeunload', () => {{
+                        if (ws) ws.close();
+                        if (pingInterval) clearInterval(pingInterval);
+                    }});
+                }})();
+            </script>
         </div>
 
         <div class="mt-8">
