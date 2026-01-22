@@ -30,6 +30,8 @@ pub async fn create_scratch(
         ));
     }
 
+    tracing::debug!("Creating scratch '{}' from branch '{}'", scratch_name, branch);
+
     // Check if scratch already exists
     let releases_dir = &config.server.releases_dir;
     let scratch_dir = releases_dir.join(&scratch_name);
@@ -40,6 +42,7 @@ pub async fn create_scratch(
 
     // Determine services to use
     let services = if let Some(profile_name) = &profile {
+        tracing::debug!("Using profile: {}", profile_name);
         config
             .get_profile(profile_name)
             .map(|p| p.services.clone())
@@ -47,6 +50,7 @@ pub async fn create_scratch(
     } else {
         config.scratch.services.clone()
     };
+    tracing::debug!("Services to include: {:?}", services);
 
     // Determine template to use
     let template_name = template
@@ -58,15 +62,18 @@ pub async fn create_scratch(
             })
         })
         .unwrap_or_else(|| config.scratch.template.clone());
+    tracing::debug!("Using template: {}", template_name);
 
     // Create scratch instance
     let mut scratch = Scratch::new(scratch_name.clone(), branch.to_string(), template_name.clone());
     scratch.services = services.clone();
 
     // Create directory structure
+    tracing::debug!("Creating directory structure at {}", scratch_dir.display());
     create_scratch_directories(&scratch_dir)?;
 
     // Ensure network exists
+    tracing::debug!("Ensuring Docker network exists");
     docker.ensure_network().await?;
 
     // Provision shared services and databases
@@ -77,7 +84,9 @@ pub async fn create_scratch(
                 // For postgres, create a database
                 if service_name == "postgres" {
                     let db_name = format!("scratch_{}", scratch_name);
+                    tracing::debug!("Ensuring PostgreSQL service is running");
                     services::ensure_shared_service_running(config, docker, service_name).await?;
+                    tracing::debug!("Creating database: {}", db_name);
                     services::create_postgres_database(config, &db_name).await?;
                     databases
                         .entry(service_name.clone())
@@ -90,11 +99,14 @@ pub async fn create_scratch(
     scratch.databases = databases;
 
     // Render and save compose file
+    tracing::debug!("Rendering docker-compose file");
     let compose = render_compose_file(config, &scratch)?;
     let compose_path = scratch_dir.join("compose.yml");
+    tracing::debug!("Saving docker-compose file to {}", compose_path.display());
     compose.save(&compose_path)?;
 
     // Save scratch config
+    tracing::debug!("Saving scratch configuration");
     let scratch_config = ScratchConfig {
         name: scratch.name.clone(),
         branch: scratch.branch.clone(),
@@ -110,15 +122,18 @@ pub async fn create_scratch(
     fs::write(&config_path, config_content)?;
 
     // Start the scratch (run docker compose up)
+    tracing::info!("Starting containers for scratch '{}'", scratch_name);
     start_scratch_compose(&scratch_dir).await?;
 
     // Update nginx config
     if config.nginx.enabled {
+        tracing::debug!("Regenerating nginx configuration");
         nginx::regenerate_config(config, docker).await?;
+        tracing::debug!("Reloading nginx");
         nginx::reload(config, docker).await?;
     }
 
-    tracing::info!("Created scratch: {}", scratch_name);
+    tracing::info!("Successfully created scratch: {}", scratch_name);
     Ok(scratch)
 }
 
@@ -148,6 +163,7 @@ fn render_compose_file(config: &Config, scratch: &Scratch) -> Result<ComposeFile
 async fn start_scratch_compose(scratch_dir: &Path) -> Result<()> {
     use tokio::process::Command;
 
+    tracing::debug!("Running 'docker compose up' in {}", scratch_dir.display());
     let output = Command::new("docker")
         .args(["compose", "up", "-d"])
         .current_dir(scratch_dir)
@@ -156,12 +172,14 @@ async fn start_scratch_compose(scratch_dir: &Path) -> Result<()> {
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
+        tracing::error!("Docker compose up failed: {}", stderr);
         return Err(Error::Other(format!(
             "Failed to start scratch: {}",
             stderr
         )));
     }
 
+    tracing::debug!("Docker compose up completed successfully");
     Ok(())
 }
 
@@ -169,6 +187,7 @@ async fn start_scratch_compose(scratch_dir: &Path) -> Result<()> {
 async fn stop_scratch_compose(scratch_dir: &Path) -> Result<()> {
     use tokio::process::Command;
 
+    tracing::debug!("Running 'docker compose down' in {}", scratch_dir.display());
     let output = Command::new("docker")
         .args(["compose", "down"])
         .current_dir(scratch_dir)
@@ -177,12 +196,14 @@ async fn stop_scratch_compose(scratch_dir: &Path) -> Result<()> {
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
+        tracing::error!("Docker compose down failed: {}", stderr);
         return Err(Error::Other(format!(
             "Failed to stop scratch: {}",
             stderr
         )));
     }
 
+    tracing::debug!("Docker compose down completed successfully");
     Ok(())
 }
 
@@ -194,8 +215,9 @@ pub async fn start_scratch(config: &Config, _docker: &DockerClient, name: &str) 
         return Err(Error::ScratchNotFound(name.to_string()));
     }
 
+    tracing::info!("Starting scratch: {}", name);
     start_scratch_compose(&scratch_dir).await?;
-    tracing::info!("Started scratch: {}", name);
+    tracing::info!("Successfully started scratch: {}", name);
     Ok(())
 }
 
@@ -207,8 +229,9 @@ pub async fn stop_scratch(config: &Config, _docker: &DockerClient, name: &str) -
         return Err(Error::ScratchNotFound(name.to_string()));
     }
 
+    tracing::info!("Stopping scratch: {}", name);
     stop_scratch_compose(&scratch_dir).await?;
-    tracing::info!("Stopped scratch: {}", name);
+    tracing::info!("Successfully stopped scratch: {}", name);
     Ok(())
 }
 
@@ -232,6 +255,8 @@ pub async fn delete_scratch(
         return Err(Error::ScratchNotFound(name.to_string()));
     }
 
+    tracing::info!("Deleting scratch: {}", name);
+
     // Load scratch config to find databases
     let config_path = scratch_dir.join(".scratchpad.toml");
     if config_path.exists() {
@@ -241,6 +266,7 @@ pub async fn delete_scratch(
             for (service, dbs) in &scratch_config.databases {
                 if service == "postgres" {
                     for db in dbs {
+                        tracing::debug!("Dropping database: {}", db);
                         if let Err(e) = services::drop_postgres_database(config, db).await {
                             tracing::warn!("Failed to drop database {}: {}", db, e);
                         }
@@ -251,18 +277,22 @@ pub async fn delete_scratch(
     }
 
     // Stop containers
+    tracing::debug!("Stopping containers");
     stop_scratch_compose(&scratch_dir).await?;
 
     // Remove directory
+    tracing::debug!("Removing scratch directory");
     fs::remove_dir_all(&scratch_dir)?;
 
     // Update nginx config
     if config.nginx.enabled {
+        tracing::debug!("Regenerating nginx configuration");
         nginx::regenerate_config(config, docker).await?;
+        tracing::debug!("Reloading nginx");
         nginx::reload(config, docker).await?;
     }
 
-    tracing::info!("Deleted scratch: {}", name);
+    tracing::info!("Successfully deleted scratch: {}", name);
     Ok(())
 }
 
