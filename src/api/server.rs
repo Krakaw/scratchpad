@@ -75,6 +75,7 @@ fn create_router(state: SharedState) -> Router {
         .route("/ws", get(websocket::ws_handler))
         // UI routes
         .route("/", get(crate::ui::dashboard))
+        .route("/scratches/create", get(crate::ui::create_scratch))
         .route("/scratches/:name", get(crate::ui::scratch_detail))
         // Middleware
         .layer(TraceLayer::new_for_http())

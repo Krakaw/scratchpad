@@ -103,6 +103,10 @@ pub async fn dashboard(State(state): State<SharedState>) -> Html<String> {
                 <span class="text-sm text-gray-400">{} scratches</span>
             </div>
             <div class="flex space-x-4">
+                <a 
+                    href="/scratches/create"
+                    class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded font-medium"
+                >Create Scratch</a>
                 <button 
                     class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded font-medium"
                     hx-get="/"
@@ -396,4 +400,220 @@ pub async fn scratch_detail(
     );
 
     Html(html)
+}
+
+/// Create scratch page - form for creating a new scratch
+pub async fn create_scratch() -> Html<String> {
+    let html = r#"
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Scratch - Scratchpad</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-2xl">
+        <header class="mb-8">
+            <a href="/" class="text-blue-400 hover:underline mb-4 inline-block">&larr; Back to Dashboard</a>
+            <h1 class="text-3xl font-bold mb-2">Create New Scratch</h1>
+            <p class="text-gray-400">Set up a new scratch environment from a GitHub branch</p>
+        </header>
+
+        <div class="bg-gray-800 rounded-lg p-6">
+            <form id="create-form" hx-post="/api/scratches" hx-target="body">
+                <div class="mb-6">
+                    <label for="repo-url" class="block text-sm font-medium mb-2">GitHub Repository URL</label>
+                    <input 
+                        type="text" 
+                        id="repo-url" 
+                        name="repo_url"
+                        placeholder="https://github.com/user/repo"
+                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
+                        required
+                    />
+                    <p class="text-sm text-gray-400 mt-1">Full GitHub repository URL</p>
+                </div>
+
+                <div class="mb-6">
+                    <label for="branch" class="block text-sm font-medium mb-2">Branch</label>
+                    <div class="flex space-x-2">
+                        <select 
+                            id="branch" 
+                            name="branch"
+                            class="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:outline-none focus:border-blue-500"
+                            required
+                        >
+                            <option value="">Select a branch...</option>
+                        </select>
+                        <button 
+                            type="button"
+                            id="refresh-branches"
+                            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded"
+                        >Refresh</button>
+                    </div>
+                    <p class="text-sm text-gray-400 mt-1">Choose the branch to use for this scratch</p>
+                </div>
+
+                <div class="mb-6">
+                    <label for="name" class="block text-sm font-medium mb-2">Scratch Name (Optional)</label>
+                    <input 
+                        type="text" 
+                        id="name" 
+                        name="name"
+                        placeholder="Defaults to branch name"
+                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
+                        pattern="^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                    />
+                    <p class="text-sm text-gray-400 mt-1">Lowercase alphanumeric and hyphens only. Defaults to branch name if empty.</p>
+                </div>
+
+                <div class="mb-6">
+                    <label for="profile" class="block text-sm font-medium mb-2">Profile (Optional)</label>
+                    <input 
+                        type="text" 
+                        id="profile" 
+                        name="profile"
+                        placeholder="default"
+                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
+                    />
+                    <p class="text-sm text-gray-400 mt-1">Docker Compose profile to use</p>
+                </div>
+
+                <div class="mb-6">
+                    <label for="template" class="block text-sm font-medium mb-2">Template (Optional)</label>
+                    <input 
+                        type="text" 
+                        id="template" 
+                        name="template"
+                        placeholder="default"
+                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
+                    />
+                    <p class="text-sm text-gray-400 mt-1">Template to use for this scratch</p>
+                </div>
+
+                <div class="flex space-x-4">
+                    <button 
+                        type="submit"
+                        id="submit-btn"
+                        class="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 rounded font-medium"
+                    >Create Scratch</button>
+                    <a href="/" class="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded font-medium text-center">Cancel</a>
+                </div>
+            </form>
+
+            <div id="error-message" class="mt-4 p-4 bg-red-900 text-red-200 rounded hidden"></div>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            const repoUrlInput = document.getElementById('repo-url');
+            const branchSelect = document.getElementById('branch');
+            const refreshBtn = document.getElementById('refresh-branches');
+            const submitBtn = document.getElementById('submit-btn');
+            const errorDiv = document.getElementById('error-message');
+            const form = document.getElementById('create-form');
+
+            function showError(msg) {
+                errorDiv.textContent = msg;
+                errorDiv.classList.remove('hidden');
+            }
+
+            function clearError() {
+                errorDiv.classList.add('hidden');
+                errorDiv.textContent = '';
+            }
+
+            async function fetchBranches() {
+                const repoUrl = repoUrlInput.value.trim();
+                if (!repoUrl) {
+                    showError('Please enter a repository URL first');
+                    return;
+                }
+
+                // Extract owner/repo from URL
+                // Support formats like:
+                // - https://github.com/user/repo
+                // - https://github.com/user/repo.git
+                // - git@github.com:user/repo.git
+                let match = repoUrl.match(/(?:https:\/\/github\.com\/|git@github\.com:)([^\/]+)\/(.+?)(?:\.git)?$/);
+                if (!match) {
+                    showError('Invalid GitHub URL format');
+                    return;
+                }
+
+                const owner = match[1];
+                const repo = match[2];
+
+                clearError();
+                branchSelect.innerHTML = '<option value="">Loading branches...</option>';
+                branchSelect.disabled = true;
+                refreshBtn.disabled = true;
+
+                try {
+                    // Fetch branches from GitHub API
+                    const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/branches`);
+                    if (!response.ok) {
+                        throw new Error(`GitHub API error: ${response.status}`);
+                    }
+
+                    const branches = await response.json();
+                    branchSelect.innerHTML = '<option value="">Select a branch...</option>';
+                    
+                    branches.forEach(branch => {
+                        const option = document.createElement('option');
+                        option.value = branch.name;
+                        option.textContent = branch.name;
+                        branchSelect.appendChild(option);
+                    });
+
+                    if (branches.length === 0) {
+                        showError('No branches found in this repository');
+                    }
+                } catch (error) {
+                    showError(`Failed to fetch branches: ${error.message}`);
+                    branchSelect.innerHTML = '<option value="">Select a branch...</option>';
+                } finally {
+                    branchSelect.disabled = false;
+                    refreshBtn.disabled = false;
+                }
+            }
+
+            // Event listeners
+            refreshBtn.addEventListener('click', fetchBranches);
+            
+            repoUrlInput.addEventListener('change', () => {
+                clearError();
+                branchSelect.innerHTML = '<option value="">Select a branch...</option>';
+            });
+
+            // Auto-fetch branches after user stops typing
+            let debounceTimer;
+            repoUrlInput.addEventListener('input', () => {
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(fetchBranches, 1000);
+            });
+
+            // Handle form submission
+            form.addEventListener('htmx:beforeRequest', (e) => {
+                clearError();
+            });
+
+            form.addEventListener('htmx:responseError', (e) => {
+                try {
+                    const response = JSON.parse(e.detail.xhr.responseText);
+                    showError(response.error || 'Failed to create scratch');
+                } catch {
+                    showError('Failed to create scratch');
+                }
+            });
+        })();
+    </script>
+</body>
+</html>
+"#;
+    Html(html.to_string())
 }
