@@ -149,7 +149,7 @@ pub async fn delete(name: &str, force: bool) -> Result<()> {
             "Are you sure you want to delete scratch '{}'? This will also delete associated databases.",
             name
         );
-        if !confirm(&message) {
+        if !confirm(&message)? {
             info("Cancelled");
             return Ok(());
         }

@@ -42,7 +42,10 @@ fn find_config_file() -> Result<std::path::PathBuf> {
 
 /// Interpolate environment variables in the format ${VAR_NAME} or ${VAR_NAME:-default}
 fn interpolate_env_vars(content: &str) -> String {
-    let re = Regex::new(r"\$\{([A-Z_][A-Z0-9_]*)(?::-([^}]*))?\}").unwrap();
+    // This regex is a compile-time constant, panicking is acceptable here
+    // as it indicates a programming error in the codebase, not a runtime issue
+    let re = Regex::new(r"\$\{([A-Z_][A-Z0-9_]*)(?::-([^}]*))?\}")
+        .expect("Invalid regex pattern - this is a bug in the codebase");
 
     re.replace_all(content, |caps: &regex::Captures| {
         let var_name = &caps[1];

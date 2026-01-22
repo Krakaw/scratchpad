@@ -134,14 +134,18 @@ pub fn print_scratch_detail(scratch: &ScratchStatus) {
 }
 
 /// Confirm an action with the user
-pub fn confirm(message: &str) -> bool {
+pub fn confirm(message: &str) -> crate::error::Result<bool> {
     use std::io::{self, Write};
 
     print!("{} [y/N] ", message);
-    io::stdout().flush().unwrap();
+    io::stdout()
+        .flush()
+        .map_err(|e| crate::error::Error::Io(e))?;
 
     let mut input = String::new();
-    io::stdin().read_line(&mut input).unwrap();
+    io::stdin()
+        .read_line(&mut input)
+        .map_err(|e| crate::error::Error::Io(e))?;
 
-    matches!(input.trim().to_lowercase().as_str(), "y" | "yes")
+    Ok(matches!(input.trim().to_lowercase().as_str(), "y" | "yes"))
 }
