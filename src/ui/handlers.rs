@@ -187,6 +187,8 @@ pub async fn dashboard(State(state): State<SharedState>) -> Html<String> {
             const tbody = document.getElementById('scratches-tbody');
             const emptyState = document.getElementById('empty-state');
             let currentFilter = 'all';
+            let ws = null;
+            let pingInterval = null;
 
             function filterTable() {{
                 const searchTerm = searchInput.value.toLowerCase();
@@ -216,6 +218,84 @@ pub async fn dashboard(State(state): State<SharedState>) -> Html<String> {
                 emptyState.style.display = visibleCount === 0 ? 'block' : 'none';
             }}
 
+            function updateScratchStatus(scratchName, newStatus) {{
+                const row = tbody.querySelector(`tr[data-name="${{scratchName}}"]`);
+                if (row) {{
+                    // Update data attribute
+                    row.dataset.status = newStatus;
+                    
+                    // Update status display
+                    const statusCell = row.querySelector('td:nth-child(3) span');
+                    if (statusCell) {{
+                        statusCell.textContent = newStatus;
+                        statusCell.parentElement.className = 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-700';
+                        
+                        const statusClass = newStatus === 'running' ? 'text-green-500' : 'text-red-500';
+                        statusCell.className = statusClass;
+                    }}
+                    
+                    // Update button in actions column
+                    const button = row.querySelector('.px-2.py-1.text-xs:first-child');
+                    if (button) {{
+                        if (newStatus === 'running') {{
+                            button.className = 'px-2 py-1 text-xs bg-yellow-600 hover:bg-yellow-700 rounded';
+                            button.textContent = 'Stop';
+                            button.setAttribute('hx-post', `/api/scratches/${{scratchName}}/stop`);
+                        }} else {{
+                            button.className = 'px-2 py-1 text-xs bg-green-600 hover:bg-green-700 rounded';
+                            button.textContent = 'Start';
+                            button.setAttribute('hx-post', `/api/scratches/${{scratchName}}/start`);
+                        }}
+                    }}
+                    
+                    // Re-apply filter
+                    filterTable();
+                }}
+            }}
+
+            function connectWebSocket() {{
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                ws = new WebSocket(`${{protocol}}//${{window.location.host}}/ws`);
+                
+                ws.onopen = function() {{
+                    console.log('WebSocket connected for dashboard updates');
+                    // Subscribe to all status updates
+                    const msg = {{
+                        type: 'Subscribe',
+                        channels: ['status:*']
+                    }};
+                    ws.send(JSON.stringify(msg));
+                    
+                    // Start keep-alive pings
+                    if (pingInterval) clearInterval(pingInterval);
+                    pingInterval = setInterval(() => {{
+                        if (ws && ws.readyState === WebSocket.OPEN) {{
+                            ws.send(JSON.stringify({{ type: 'Ping' }}));
+                        }}
+                    }}, 30000);
+                }};
+                
+                ws.onmessage = function(event) {{
+                    const msg = JSON.parse(event.data);
+                    
+                    // Handle StatusChange messages
+                    if (msg.StatusChange) {{
+                        console.log('Status update:', msg.StatusChange);
+                        updateScratchStatus(msg.StatusChange.scratch, msg.StatusChange.status);
+                    }}
+                }};
+                
+                ws.onerror = function(error) {{
+                    console.error('WebSocket error:', error);
+                }};
+                
+                ws.onclose = function() {{
+                    console.log('WebSocket disconnected, reconnecting in 3 seconds...');
+                    if (pingInterval) clearInterval(pingInterval);
+                    setTimeout(connectWebSocket, 3000);
+                }};
+            }}
+
             searchInput.addEventListener('input', filterTable);
 
             filterBtns.forEach(btn => {{
@@ -229,6 +309,9 @@ pub async fn dashboard(State(state): State<SharedState>) -> Html<String> {
 
             // Set initial active filter
             filterBtns[0].classList.add('bg-blue-600');
+            
+            // Connect to WebSocket for real-time updates
+            connectWebSocket();
         }})();
     </script>
 </body>
