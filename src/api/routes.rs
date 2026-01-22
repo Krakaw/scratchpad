@@ -7,7 +7,6 @@ use axum::{
     Json,
 };
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 
 use super::server::SharedState;
 use crate::scratch;
@@ -168,11 +167,20 @@ pub async fn create_scratch(
     )
     .await
     {
-        Ok(scratch_instance) => (StatusCode::CREATED, Json(ApiResponse::ok(scratch_instance.name))),
-        Err(e) => (
-            StatusCode::BAD_REQUEST,
-            Json(ApiResponse::ok(e.to_string())),
-        ),
+        Ok(scratch_instance) => {
+            (StatusCode::CREATED, Json(ApiResponse::ok(scratch_instance.name)))
+        }
+        Err(e) => {
+            let error_msg = e.to_string();
+            (
+                StatusCode::BAD_REQUEST,
+                Json(ApiResponse {
+                    success: false,
+                    data: None,
+                    error: Some(error_msg),
+                }),
+            )
+        }
     }
 }
 
@@ -201,7 +209,11 @@ pub async fn delete_scratch(
         Ok(()) => (StatusCode::OK, Json(ApiResponse::ok("deleted".to_string()))),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ApiResponse::ok(e.to_string())),
+            Json(ApiResponse {
+                success: false,
+                data: None,
+                error: Some(e.to_string()),
+            }),
         ),
     }
 }
@@ -216,7 +228,11 @@ pub async fn start_scratch(
         Ok(()) => (StatusCode::OK, Json(ApiResponse::ok("started".to_string()))),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ApiResponse::ok(e.to_string())),
+            Json(ApiResponse {
+                success: false,
+                data: None,
+                error: Some(e.to_string()),
+            }),
         ),
     }
 }
@@ -231,7 +247,11 @@ pub async fn stop_scratch(
         Ok(()) => (StatusCode::OK, Json(ApiResponse::ok("stopped".to_string()))),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ApiResponse::ok(e.to_string())),
+            Json(ApiResponse {
+                success: false,
+                data: None,
+                error: Some(e.to_string()),
+            }),
         ),
     }
 }
@@ -246,7 +266,11 @@ pub async fn restart_scratch(
         Ok(()) => (StatusCode::OK, Json(ApiResponse::ok("restarted".to_string()))),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ApiResponse::ok(e.to_string())),
+            Json(ApiResponse {
+                success: false,
+                data: None,
+                error: Some(e.to_string()),
+            }),
         ),
     }
 }
@@ -325,7 +349,14 @@ pub async fn github_webhook(
         .or_else(|| payload.pull_request.as_ref().map(|pr| pr.head.ref_name.clone()));
 
     let Some(branch) = branch else {
-        return (StatusCode::BAD_REQUEST, Json(ApiResponse::ok("no branch found".to_string())));
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(ApiResponse {
+                success: false,
+                data: None,
+                error: Some("no branch found".to_string()),
+            }),
+        );
     };
 
     tracing::info!("GitHub webhook triggered for branch: {}", branch);
@@ -337,7 +368,14 @@ pub async fn github_webhook(
         Ok(s) => (StatusCode::OK, Json(ApiResponse::ok(s.name))),
         Err(e) => {
             tracing::error!("Failed to create scratch from webhook: {}", e);
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::ok(e.to_string())))
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse {
+                    success: false,
+                    data: None,
+                    error: Some(e.to_string()),
+                }),
+            )
         }
     }
 }
@@ -363,7 +401,11 @@ pub async fn start_services(State(state): State<SharedState>) -> impl IntoRespon
         Ok(()) => (StatusCode::OK, Json(ApiResponse::ok("started".to_string()))),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ApiResponse::ok(e.to_string())),
+            Json(ApiResponse {
+                success: false,
+                data: None,
+                error: Some(e.to_string()),
+            }),
         ),
     }
 }
@@ -375,7 +417,11 @@ pub async fn stop_services(State(state): State<SharedState>) -> impl IntoRespons
         Ok(()) => (StatusCode::OK, Json(ApiResponse::ok("stopped".to_string()))),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ApiResponse::ok(e.to_string())),
+            Json(ApiResponse {
+                success: false,
+                data: None,
+                error: Some(e.to_string()),
+            }),
         ),
     }
 }

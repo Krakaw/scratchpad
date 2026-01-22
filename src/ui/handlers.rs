@@ -939,7 +939,8 @@ pub async fn create_scratch() -> Html<String> {
 
                     const data = await response.json();
 
-                    if (!response.ok) {
+                    // Check for error response
+                    if (!data.success || data.error) {
                         throw new Error(data.error || 'Failed to create scratch');
                     }
 
