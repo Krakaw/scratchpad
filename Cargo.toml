@@ -15,7 +15,7 @@ futures-util = "0.3"
 clap = { version = "4", features = ["derive", "env"] }
 
 # Web server
-axum = { version = "0.7", features = ["macros"] }
+axum = { version = "0.7", features = ["macros", "ws"] }
 tower-http = { version = "0.5", features = ["fs", "cors", "trace"] }
 
 # Docker

@@ -10,6 +10,7 @@ use crate::error::Result;
 static DOCKER_CLIENT: OnceCell<Arc<DockerClient>> = OnceCell::const_new();
 
 /// Wrapper around the bollard Docker client
+#[derive(Clone)]
 pub struct DockerClient {
     inner: Docker,
     config: DockerConfig,

@@ -13,12 +13,13 @@ use crate::config::Config;
 use crate::docker::DockerClient;
 use crate::error::Result;
 
-use super::routes;
+use super::{events, routes, websocket};
 
 /// Application state shared across handlers
 pub struct AppState {
     pub config: Config,
     pub docker: DockerClient,
+    pub ws_hub: Arc<websocket::WsBroadcastHub>,
 }
 
 pub type SharedState = Arc<RwLock<AppState>>;
@@ -26,8 +27,18 @@ pub type SharedState = Arc<RwLock<AppState>>;
 /// Run the HTTP API server
 pub async fn run_server(config: Config, host: &str, port: u16) -> Result<()> {
     let docker = DockerClient::new(config.docker.clone())?;
+    let docker_arc = Arc::new(docker);
 
-    let state = Arc::new(RwLock::new(AppState { config, docker }));
+    let ws_hub = Arc::new(websocket::WsBroadcastHub::new());
+
+    let state = Arc::new(RwLock::new(AppState {
+        config,
+        docker: (*docker_arc).clone(),
+        ws_hub: ws_hub.clone(),
+    }));
+
+    // Start background event streaming tasks
+    events::start_event_streaming(ws_hub, docker_arc);
 
     let app = create_router(state);
 
@@ -60,6 +71,8 @@ fn create_router(state: SharedState) -> Router {
         .route("/api/services", get(routes::list_services))
         .route("/api/services/start", post(routes::start_services))
         .route("/api/services/stop", post(routes::stop_services))
+        // WebSocket route
+        .route("/ws", get(websocket::ws_handler))
         // UI routes
         .route("/", get(crate::ui::dashboard))
         .route("/scratches/:name", get(crate::ui::scratch_detail))
