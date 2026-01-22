@@ -423,7 +423,7 @@ pub async fn create_scratch() -> Html<String> {
         </header>
 
         <div class="bg-gray-800 rounded-lg p-6">
-            <form id="create-form" hx-post="/api/scratches" hx-target="body">
+            <form id="create-form">
                 <div class="mb-6">
                     <label for="repo-url" class="block text-sm font-medium mb-2">GitHub Repository URL</label>
                     <input 
@@ -598,16 +598,50 @@ pub async fn create_scratch() -> Html<String> {
             });
 
             // Handle form submission
-            form.addEventListener('htmx:beforeRequest', (e) => {
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
                 clearError();
-            });
 
-            form.addEventListener('htmx:responseError', (e) => {
+                const branch = branchSelect.value;
+                if (!branch) {
+                    showError('Please select a branch');
+                    return;
+                }
+
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Creating...';
+
+                const payload = {
+                    branch: branch,
+                    name: document.getElementById('name').value || undefined,
+                    profile: document.getElementById('profile').value || undefined,
+                    template: document.getElementById('template').value || undefined,
+                };
+
+                // Remove undefined fields
+                Object.keys(payload).forEach(k => payload[k] === undefined && delete payload[k]);
+
                 try {
-                    const response = JSON.parse(e.detail.xhr.responseText);
-                    showError(response.error || 'Failed to create scratch');
-                } catch {
-                    showError('Failed to create scratch');
+                    const response = await fetch('/api/scratches', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(payload),
+                    });
+
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(data.error || 'Failed to create scratch');
+                    }
+
+                    // Success - redirect to dashboard
+                    window.location.href = '/';
+                } catch (error) {
+                    showError(`Error: ${error.message}`);
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Create Scratch';
                 }
             });
         })();
