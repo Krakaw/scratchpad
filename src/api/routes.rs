@@ -361,8 +361,19 @@ pub async fn start_service(
         ).into_response();
     }
     
-    // TODO: Implement individual service start
-    (StatusCode::OK, Json(ApiResponse::ok("Service started"))).into_response()
+    // Start the service
+    match services::start_service(&state.config, &state.docker, &service).await {
+        Ok(_) => {
+            (StatusCode::OK, Json(ApiResponse::ok("Service started"))).into_response()
+        }
+        Err(e) => {
+            tracing::error!("Failed to start service {}: {}", service, e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::<()>::err("Failed to start service")),
+            ).into_response()
+        }
+    }
 }
 
 pub async fn stop_service(
@@ -379,6 +390,17 @@ pub async fn stop_service(
         ).into_response();
     }
     
-    // TODO: Implement individual service stop
-    (StatusCode::OK, Json(ApiResponse::ok("Service stopped"))).into_response()
+    // Stop the service
+    match services::stop_service(&state.docker, &service).await {
+        Ok(_) => {
+            (StatusCode::OK, Json(ApiResponse::ok("Service stopped"))).into_response()
+        }
+        Err(e) => {
+            tracing::error!("Failed to stop service {}: {}", service, e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::<()>::err("Failed to stop service")),
+            ).into_response()
+        }
+    }
 }

@@ -156,3 +156,36 @@ pub async fn get_shared_services_status(
 
     Ok(status)
 }
+
+/// Start a specific shared service
+pub async fn start_service(
+    config: &Config,
+    docker: &DockerClient,
+    service_name: &str,
+) -> Result<()> {
+    // Ensure network exists
+    docker.ensure_network().await?;
+
+    // Ensure the service is running (creates it if needed)
+    ensure_shared_service_running(config, docker, service_name).await
+}
+
+/// Stop a specific shared service
+pub async fn stop_service(
+    docker: &DockerClient,
+    service_name: &str,
+) -> Result<()> {
+    let container_name = format!("scratchpad-{}", service_name);
+    let containers = docker.list_shared_service_containers().await?;
+    
+    let container = containers
+        .iter()
+        .find(|c| c.name == container_name)
+        .ok_or_else(|| Error::ServiceNotFound(service_name.to_string()))?;
+
+    docker.stop_container(&container.id).await?;
+    tracing::info!("Stopped shared service: {}", service_name);
+
+    Ok(())
+}
+
