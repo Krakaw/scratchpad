@@ -57,6 +57,8 @@ fn create_router(state: SharedState) -> Router {
     Router::new()
         // API routes
         .route("/api/health", get(routes::health))
+        .route("/api/config", get(routes::get_config))
+        .route("/api/config", post(routes::update_config))
         .route("/api/scratches", get(routes::list_scratches))
         .route("/api/scratches", post(routes::create_scratch))
         .route("/api/scratches/:name", get(routes::get_scratch))
@@ -75,6 +77,7 @@ fn create_router(state: SharedState) -> Router {
         .route("/ws", get(websocket::ws_handler))
         // UI routes
         .route("/", get(crate::ui::dashboard))
+        .route("/config", get(crate::ui::config_editor))
         .route("/scratches/create", get(crate::ui::create_scratch))
         .route("/scratches/:name", get(crate::ui::scratch_detail))
         // Middleware

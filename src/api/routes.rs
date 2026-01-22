@@ -300,3 +300,42 @@ pub async fn stop_services(State(state): State<SharedState>) -> impl IntoRespons
         ),
     }
 }
+
+// Config routes
+
+pub async fn get_config(State(state): State<SharedState>) -> impl IntoResponse {
+    let state = state.read().await;
+    (StatusCode::OK, Json(ApiResponse::ok(state.config.clone())))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateConfigRequest {
+    pub server: Option<crate::config::ServerConfig>,
+    pub docker: Option<crate::config::DockerConfig>,
+    pub nginx: Option<crate::config::NginxConfig>,
+    pub github: Option<crate::config::GithubConfig>,
+}
+
+pub async fn update_config(
+    State(state): State<SharedState>,
+    Json(req): Json<UpdateConfigRequest>,
+) -> impl IntoResponse {
+    let mut state = state.write().await;
+    
+    if let Some(server) = req.server {
+        state.config.server = server;
+    }
+    if let Some(docker) = req.docker {
+        state.config.docker = docker;
+    }
+    if let Some(nginx) = req.nginx {
+        state.config.nginx = nginx;
+    }
+    if let Some(github) = req.github {
+        state.config.github = Some(github);
+    }
+    
+    // TODO: Persist config to file
+    
+    (StatusCode::OK, Json(ApiResponse::ok("Config updated")))
+}

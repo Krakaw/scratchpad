@@ -107,6 +107,10 @@ pub async fn dashboard(State(state): State<SharedState>) -> Html<String> {
                     href="/scratches/create"
                     class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded font-medium"
                 >Create Scratch</a>
+                <a 
+                    href="/config"
+                    class="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded font-medium"
+                >Configuration</a>
                 <button 
                     class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded font-medium"
                     hx-get="/"
@@ -644,6 +648,298 @@ pub async fn create_scratch() -> Html<String> {
                     submitBtn.textContent = 'Create Scratch';
                 }
             });
+        })();
+    </script>
+</body>
+</html>
+"#;
+    Html(html.to_string())
+}
+
+/// Configuration editor page
+pub async fn config_editor() -> Html<String> {
+    let html = r#"
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuration - Scratchpad</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-4xl">
+        <header class="mb-8">
+            <a href="/" class="text-blue-400 hover:underline mb-4 inline-block">&larr; Back to Dashboard</a>
+            <h1 class="text-3xl font-bold mb-2">Configuration</h1>
+            <p class="text-gray-400">Edit system configuration settings</p>
+        </header>
+
+        <div id="loading" class="bg-blue-900 text-blue-200 p-4 rounded mb-6">
+            Loading configuration...
+        </div>
+
+        <div id="error-message" class="bg-red-900 text-red-200 p-4 rounded mb-6 hidden"></div>
+
+        <form id="config-form" class="hidden">
+            <!-- Server Configuration -->
+            <div class="bg-gray-800 rounded-lg p-6 mb-6">
+                <h2 class="text-xl font-semibold mb-4">Server Configuration</h2>
+                
+                <div class="mb-4">
+                    <label for="server-host" class="block text-sm font-medium mb-2">Host</label>
+                    <input 
+                        type="text" 
+                        id="server-host" 
+                        name="server.host"
+                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:outline-none focus:border-blue-500"
+                    />
+                </div>
+
+                <div class="mb-4">
+                    <label for="server-port" class="block text-sm font-medium mb-2">Port</label>
+                    <input 
+                        type="number" 
+                        id="server-port" 
+                        name="server.port"
+                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:outline-none focus:border-blue-500"
+                    />
+                </div>
+
+                <div class="mb-4">
+                    <label for="server-releases-dir" class="block text-sm font-medium mb-2">Releases Directory</label>
+                    <input 
+                        type="text" 
+                        id="server-releases-dir" 
+                        name="server.releases_dir"
+                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:outline-none focus:border-blue-500"
+                    />
+                </div>
+            </div>
+
+            <!-- Docker Configuration -->
+            <div class="bg-gray-800 rounded-lg p-6 mb-6">
+                <h2 class="text-xl font-semibold mb-4">Docker Configuration</h2>
+                
+                <div class="mb-4">
+                    <label for="docker-socket" class="block text-sm font-medium mb-2">Docker Socket</label>
+                    <input 
+                        type="text" 
+                        id="docker-socket" 
+                        name="docker.socket"
+                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:outline-none focus:border-blue-500"
+                    />
+                    <p class="text-sm text-gray-400 mt-1">Path to Docker socket or TCP endpoint</p>
+                </div>
+
+                <div class="mb-4">
+                    <label for="docker-label-prefix" class="block text-sm font-medium mb-2">Label Prefix</label>
+                    <input 
+                        type="text" 
+                        id="docker-label-prefix" 
+                        name="docker.label_prefix"
+                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:outline-none focus:border-blue-500"
+                    />
+                </div>
+            </div>
+
+            <!-- Nginx Configuration -->
+            <div class="bg-gray-800 rounded-lg p-6 mb-6">
+                <h2 class="text-xl font-semibold mb-4">Nginx Configuration</h2>
+                
+                <div class="mb-4">
+                    <label class="flex items-center">
+                        <input 
+                            type="checkbox" 
+                            id="nginx-enabled" 
+                            name="nginx.enabled"
+                            class="mr-2"
+                        />
+                        <span class="text-sm font-medium">Enable Nginx Proxy</span>
+                    </label>
+                </div>
+
+                <div class="mb-4">
+                    <label for="nginx-domain" class="block text-sm font-medium mb-2">Domain</label>
+                    <input 
+                        type="text" 
+                        id="nginx-domain" 
+                        name="nginx.domain"
+                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:outline-none focus:border-blue-500"
+                    />
+                </div>
+
+                <div class="mb-4">
+                    <label for="nginx-routing" class="block text-sm font-medium mb-2">Routing Mode</label>
+                    <select 
+                        id="nginx-routing" 
+                        name="nginx.routing"
+                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:outline-none focus:border-blue-500"
+                    >
+                        <option value="subdomain">Subdomain</option>
+                        <option value="path">Path</option>
+                    </select>
+                </div>
+
+                <div class="mb-4">
+                    <label for="nginx-config-path" class="block text-sm font-medium mb-2">Config Path</label>
+                    <input 
+                        type="text" 
+                        id="nginx-config-path" 
+                        name="nginx.config_path"
+                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:outline-none focus:border-blue-500"
+                    />
+                </div>
+            </div>
+
+            <!-- GitHub Configuration -->
+            <div class="bg-gray-800 rounded-lg p-6 mb-6">
+                <h2 class="text-xl font-semibold mb-4">GitHub Configuration</h2>
+                
+                <div class="mb-4">
+                    <label for="github-token" class="block text-sm font-medium mb-2">GitHub Token (Optional)</label>
+                    <input 
+                        type="password" 
+                        id="github-token" 
+                        name="github.token"
+                        placeholder="Leave blank to keep current value"
+                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:outline-none focus:border-blue-500"
+                    />
+                    <p class="text-sm text-gray-400 mt-1">Personal access token for GitHub API</p>
+                </div>
+            </div>
+
+            <div class="flex space-x-4">
+                <button 
+                    type="submit"
+                    class="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 rounded font-medium"
+                >Save Configuration</button>
+                <a href="/" class="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded font-medium text-center">Cancel</a>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        (function() {
+            const form = document.getElementById('config-form');
+            const loadingDiv = document.getElementById('loading');
+            const errorDiv = document.getElementById('error-message');
+
+            function showError(msg) {
+                errorDiv.textContent = msg;
+                errorDiv.classList.remove('hidden');
+            }
+
+            function clearError() {
+                errorDiv.classList.add('hidden');
+            }
+
+            async function loadConfig() {
+                try {
+                    const response = await fetch('/api/config');
+                    if (!response.ok) {
+                        throw new Error('Failed to load configuration');
+                    }
+
+                    const data = await response.json();
+                    if (!data.success) {
+                        throw new Error(data.error || 'Failed to load configuration');
+                    }
+
+                    const config = data.data;
+                    populateForm(config);
+                    
+                    loadingDiv.classList.add('hidden');
+                    form.classList.remove('hidden');
+                } catch (error) {
+                    showError(`Failed to load configuration: ${error.message}`);
+                    loadingDiv.classList.add('hidden');
+                }
+            }
+
+            function populateForm(config) {
+                // Server config
+                document.getElementById('server-host').value = config.server?.host || '';
+                document.getElementById('server-port').value = config.server?.port || '';
+                document.getElementById('server-releases-dir').value = config.server?.releases_dir || '';
+
+                // Docker config
+                document.getElementById('docker-socket').value = config.docker?.socket || '';
+                document.getElementById('docker-label-prefix').value = config.docker?.label_prefix || '';
+
+                // Nginx config
+                document.getElementById('nginx-enabled').checked = config.nginx?.enabled ?? true;
+                document.getElementById('nginx-domain').value = config.nginx?.domain || '';
+                document.getElementById('nginx-routing').value = config.nginx?.routing || 'subdomain';
+                document.getElementById('nginx-config-path').value = config.nginx?.config_path || '';
+            }
+
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                clearError();
+
+                const formData = new FormData(form);
+                const config = {
+                    server: {
+                        host: formData.get('server.host'),
+                        port: parseInt(formData.get('server.port')),
+                        releases_dir: formData.get('server.releases_dir'),
+                    },
+                    docker: {
+                        socket: formData.get('docker.socket'),
+                        label_prefix: formData.get('docker.label_prefix'),
+                    },
+                    nginx: {
+                        enabled: formData.get('nginx.enabled') === 'on',
+                        domain: formData.get('nginx.domain'),
+                        routing: formData.get('nginx.routing'),
+                        config_path: formData.get('nginx.config_path'),
+                    },
+                };
+
+                // Only include GitHub config if token is provided
+                const githubToken = formData.get('github.token');
+                if (githubToken) {
+                    config.github = {
+                        token: githubToken,
+                    };
+                }
+
+                const submitBtn = form.querySelector('button[type="submit"]');
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Saving...';
+
+                try {
+                    const response = await fetch('/api/config', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(config),
+                    });
+
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(data.error || 'Failed to save configuration');
+                    }
+
+                    // Success
+                    showError('Configuration saved successfully!');
+                    errorDiv.classList.remove('bg-red-900', 'text-red-200');
+                    errorDiv.classList.add('bg-green-900', 'text-green-200');
+                    
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 2000);
+                } catch (error) {
+                    showError(`Error: ${error.message}`);
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Save Configuration';
+                }
+            });
+
+            loadConfig();
         })();
     </script>
 </body>
