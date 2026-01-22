@@ -1,0 +1,65 @@
+[package]
+name = "scratchpad"
+version = "2.0.0"
+edition = "2021"
+authors = ["Krakaw"]
+description = "Deploy scratch environments easily"
+license = "MIT"
+
+[dependencies]
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+futures-util = "0.3"
+
+# CLI
+clap = { version = "4", features = ["derive", "env"] }
+
+# Web server
+axum = { version = "0.7", features = ["macros"] }
+tower-http = { version = "0.5", features = ["fs", "cors", "trace"] }
+
+# Docker
+bollard = "0.16"
+
+# Config
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+toml = "0.8"
+
+# Templating
+minijinja = { version = "2", features = ["loader"] }
+
+# Database (for provisioning)
+tokio-postgres = { version = "0.7", features = ["with-chrono-0_4"] }
+
+# GitHub API
+octocrab = "0.38"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Error handling
+thiserror = "1"
+anyhow = "1"
+
+# Utilities
+chrono = { version = "0.4", features = ["serde"] }
+regex = "1"
+uuid = { version = "1", features = ["v4"] }
+
+# Static file embedding
+rust-embed = "8"
+
+# Terminal output
+comfy-table = "7"
+colored = "2"
+indicatif = "0.17"
+
+# HTTP client (for webhooks)
+reqwest = { version = "0.11", features = ["json"] }
+
+[profile.release]
+lto = true
+strip = true

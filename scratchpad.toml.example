@@ -1,0 +1,62 @@
+# Scratchpad Configuration
+# See https://github.com/Krakaw/scratchpad for documentation
+
+[server]
+host = "0.0.0.0"
+port = 3456
+releases_dir = "./releases"
+
+[docker]
+socket = "/var/run/docker.sock"
+network = "scratchpad-network"
+label_prefix = "scratchpad"
+
+[nginx]
+enabled = true
+config_path = "./nginx/scratches.conf"
+domain = "scratches.localhost"
+routing = "subdomain"  # or "path"
+# container = "nginx"  # Container name for reload
+# reload_command = "docker exec nginx nginx -s reload"
+
+# GitHub configuration (optional, for webhooks)
+# [github]
+# token = "${GITHUB_TOKEN}"
+# api_repo = "owner/api-repo"
+# web_repo = "owner/web-repo"
+
+# Shared services
+[services.postgres]
+image = "postgres:16"
+shared = true
+port = 5432
+auto_create_db = true
+env = { POSTGRES_PASSWORD = "postgres", POSTGRES_USER = "postgres" }
+healthcheck = "pg_isready -U postgres"
+
+[services.redis]
+image = "redis:7-alpine"
+shared = false  # Each scratch gets its own instance
+healthcheck = "redis-cli ping"
+
+# Uncomment to add Kafka support
+# [services.kafka]
+# image = "bitnami/kafka:3.6"
+# shared = true
+# env = { ALLOW_PLAINTEXT_LISTENER = "yes" }
+
+# Default scratch settings
+[scratch.defaults]
+template = "default"
+services = ["postgres", "redis"]
+
+# Custom profiles for different use cases
+[scratch.profiles.minimal]
+services = ["postgres"]
+
+[scratch.profiles.full]
+services = ["postgres", "redis"]
+
+# Profile-specific environment variables
+# [scratch.profiles.full.env]
+# ENABLE_KAFKA = "true"
