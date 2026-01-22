@@ -9,6 +9,7 @@ mod error;
 mod nginx;
 mod scratch;
 mod services;
+pub mod auth;
 
 pub mod api;
 pub mod ui;

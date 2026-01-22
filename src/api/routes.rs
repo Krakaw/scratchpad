@@ -7,10 +7,12 @@ use axum::{
     Json,
 };
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 
 use super::server::SharedState;
 use crate::scratch;
 use crate::services;
+use crate::auth;
 
 // Request/Response types
 
@@ -51,6 +53,83 @@ impl<T: Serialize> ApiResponse<T> {
             error: Some(message.into()),
         }
     }
+}
+
+// Auth routes
+
+pub async fn login(
+    State(state): State<SharedState>,
+    Json(req): Json<auth::models::LoginRequest>,
+) -> impl IntoResponse {
+    // For now, create a default user for authentication
+    // In production, this would validate against a database
+    let user = if req.username == "admin" && req.password == "admin" {
+        auth::models::User::new("admin".to_string(), auth::models::UserRole::Admin)
+    } else {
+        return (
+            StatusCode::UNAUTHORIZED,
+            Json(ApiResponse::<()>::err("Invalid credentials")),
+        ).into_response();
+    };
+
+    // Create JWT token
+    match auth::create_token(&user) {
+        Ok(token) => {
+            let response = auth::models::LoginResponse {
+                token,
+                user: user.into(),
+            };
+            (StatusCode::OK, Json(ApiResponse::ok(response))).into_response()
+        }
+        Err(e) => {
+            tracing::error!("Failed to create token: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::<()>::err("Failed to create token")),
+            ).into_response()
+        }
+    }
+}
+
+pub async fn verify_token(
+    State(_state): State<SharedState>,
+    Json(req): Json<serde_json::Value>,
+) -> impl IntoResponse {
+    // Extract token from request
+    let token = match req.get("token").and_then(|t| t.as_str()) {
+        Some(t) => t,
+        None => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(ApiResponse::<()>::err("Token required")),
+            ).into_response();
+        }
+    };
+
+    // Validate token
+    match auth::validate_token(token) {
+        Ok(claims) => {
+            (StatusCode::OK, Json(ApiResponse::ok(claims))).into_response()
+        }
+        Err(e) => {
+            tracing::warn!("Token validation failed: {}", e);
+            (
+                StatusCode::UNAUTHORIZED,
+                Json(ApiResponse::<()>::err("Invalid token")),
+            ).into_response()
+        }
+    }
+}
+
+pub async fn get_current_user(
+    State(_state): State<SharedState>,
+) -> impl IntoResponse {
+    // In a real implementation, extract the user from the request context
+    let user = auth::models::User::new(
+        "current_user".to_string(),
+        auth::models::UserRole::User,
+    );
+    (StatusCode::OK, Json(ApiResponse::ok(user))).into_response()
 }
 
 // Health check

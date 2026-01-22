@@ -55,6 +55,10 @@ pub async fn run_server(config: Config, host: &str, port: u16) -> Result<()> {
 /// Create the router with all routes
 fn create_router(state: SharedState) -> Router {
     Router::new()
+        // Auth routes
+        .route("/api/auth/login", post(routes::login))
+        .route("/api/auth/verify", post(routes::verify_token))
+        .route("/api/auth/me", get(routes::get_current_user))
         // API routes
         .route("/api/health", get(routes::health))
         .route("/api/config", get(routes::get_config))
@@ -78,6 +82,7 @@ fn create_router(state: SharedState) -> Router {
         // WebSocket route
         .route("/ws", get(websocket::ws_handler))
         // UI routes
+        .route("/login", get(crate::ui::login))
         .route("/", get(crate::ui::dashboard))
         .route("/config", get(crate::ui::config_editor))
         .route("/services", get(crate::ui::service_manager))

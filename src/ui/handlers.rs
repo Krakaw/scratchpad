@@ -8,6 +8,103 @@ use axum::{
 use crate::api::server::SharedState;
 use crate::scratch;
 
+/// Login page
+pub async fn login() -> Html<String> {
+    let html = r#"
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Scratchpad</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen flex items-center justify-center">
+    <div class="w-full max-w-md">
+        <div class="bg-gray-800 rounded-lg shadow-xl p-8">
+            <h1 class="text-3xl font-bold mb-8 text-center">Scratchpad</h1>
+            
+            <form id="login-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-2">Username</label>
+                    <input 
+                        type="text" 
+                        id="username" 
+                        name="username"
+                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
+                        placeholder="admin"
+                        required
+                    />
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium mb-2">Password</label>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        name="password"
+                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
+                        placeholder="••••••••"
+                        required
+                    />
+                </div>
+                
+                <div id="error-message" class="bg-red-900 text-red-200 p-3 rounded hidden"></div>
+                
+                <button 
+                    type="submit"
+                    class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded font-medium transition"
+                >
+                    Login
+                </button>
+            </form>
+            
+            <p class="text-center text-gray-400 mt-6 text-sm">
+                Demo: username: <strong>admin</strong> | password: <strong>admin</strong>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('error-message');
+            
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success && data.data.token) {
+                    // Store token in localStorage
+                    localStorage.setItem('scratchpad_token', data.data.token);
+                    // Redirect to dashboard
+                    window.location.href = '/';
+                } else {
+                    errorDiv.textContent = data.error || 'Login failed';
+                    errorDiv.classList.remove('hidden');
+                }
+            } catch (error) {
+                errorDiv.textContent = 'Login error: ' + error.message;
+                errorDiv.classList.remove('hidden');
+            }
+        });
+    </script>
+</body>
+</html>
+    "#;
+    Html(html.to_string())
+}
+
 /// Dashboard page - lists all scratches
 pub async fn dashboard(State(state): State<SharedState>) -> Html<String> {
     let state = state.read().await;
@@ -97,8 +194,8 @@ pub async fn dashboard(State(state): State<SharedState>) -> Html<String> {
 <body class="bg-gray-900 text-gray-100 min-h-screen">
     <div class="flex h-screen">
         <!-- Sidebar Navigation -->
-        <div class="w-64 bg-gray-800 border-r border-gray-700 overflow-y-auto">
-            <div class="p-6">
+        <div class="w-64 bg-gray-800 border-r border-gray-700 overflow-y-auto flex flex-col">
+            <div class="p-6 flex-1">
                 <h1 class="text-2xl font-bold mb-8">Scratchpad</h1>
                 <nav class="space-y-4">
                     <a href="/" class="block px-4 py-2 bg-blue-600 rounded font-medium">Dashboard</a>
@@ -111,6 +208,15 @@ pub async fn dashboard(State(state): State<SharedState>) -> Html<String> {
                         hx-target="body"
                     >Refresh</button>
                 </nav>
+            </div>
+            <div class="p-6 border-t border-gray-700">
+                <div id="user-info" class="text-sm text-gray-400 mb-3">
+                    <p>User: <strong id="username">Loading...</strong></p>
+                </div>
+                <button 
+                    id="logout-btn"
+                    class="w-full px-4 py-2 bg-red-600 hover:bg-red-700 rounded font-medium text-sm"
+                >Logout</button>
             </div>
         </div>
 
@@ -186,9 +292,43 @@ pub async fn dashboard(State(state): State<SharedState>) -> Html<String> {
             const filterBtns = document.querySelectorAll('.filter-btn');
             const tbody = document.getElementById('scratches-tbody');
             const emptyState = document.getElementById('empty-state');
+            const logoutBtn = document.getElementById('logout-btn');
             let currentFilter = 'all';
             let ws = null;
             let pingInterval = null;
+
+            // Check if user is logged in
+            function checkAuth() {{
+                const token = localStorage.getItem('scratchpad_token');
+                if (!token) {{
+                    window.location.href = '/login';
+                    return;
+                }}
+                loadUserInfo();
+            }}
+
+            // Load user information
+            function loadUserInfo() {{
+                const token = localStorage.getItem('scratchpad_token');
+                if (token) {{
+                    try {{
+                        const parts = token.split('.');
+                        const payload = JSON.parse(atob(parts[1]));
+                        document.getElementById('username').textContent = payload.username;
+                    }} catch (e) {{
+                        console.error('Failed to parse token:', e);
+                    }}
+                }}
+            }}
+
+            // Logout handler
+            logoutBtn.addEventListener('click', () => {{
+                localStorage.removeItem('scratchpad_token');
+                window.location.href = '/login';
+            }});
+
+            // Check authentication on page load
+            checkAuth();
 
             function filterTable() {{
                 const searchTerm = searchInput.value.toLowerCase();

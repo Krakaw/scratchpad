@@ -47,7 +47,12 @@ anyhow = "1"
 # Utilities
 chrono = { version = "0.4", features = ["serde"] }
 regex = "1"
-uuid = { version = "1", features = ["v4"] }
+uuid = { version = "1", features = ["v4", "serde"] }
+
+# Authentication & Session
+jsonwebtoken = "9"
+bcrypt = "0.15"
+rand = "0.8"
 
 # Static file embedding
 rust-embed = "8"
