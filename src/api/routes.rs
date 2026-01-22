@@ -339,3 +339,39 @@ pub async fn update_config(
     
     (StatusCode::OK, Json(ApiResponse::ok("Config updated")))
 }
+
+pub async fn start_service(
+    State(state): State<SharedState>,
+    Path(service): Path<String>,
+) -> impl IntoResponse {
+    let state = state.read().await;
+    
+    // Check if service exists in config
+    if !state.config.services.contains_key(&service) {
+        return (
+            StatusCode::NOT_FOUND,
+            Json(ApiResponse::<()>::err("Service not found")),
+        ).into_response();
+    }
+    
+    // TODO: Implement individual service start
+    (StatusCode::OK, Json(ApiResponse::ok("Service started"))).into_response()
+}
+
+pub async fn stop_service(
+    State(state): State<SharedState>,
+    Path(service): Path<String>,
+) -> impl IntoResponse {
+    let state = state.read().await;
+    
+    // Check if service exists in config
+    if !state.config.services.contains_key(&service) {
+        return (
+            StatusCode::NOT_FOUND,
+            Json(ApiResponse::<()>::err("Service not found")),
+        ).into_response();
+    }
+    
+    // TODO: Implement individual service stop
+    (StatusCode::OK, Json(ApiResponse::ok("Service stopped"))).into_response()
+}

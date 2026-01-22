@@ -108,6 +108,10 @@ pub async fn dashboard(State(state): State<SharedState>) -> Html<String> {
                     class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded font-medium"
                 >Create Scratch</a>
                 <a 
+                    href="/services"
+                    class="px-4 py-2 bg-orange-600 hover:bg-orange-700 rounded font-medium"
+                >Services</a>
+                <a 
                     href="/config"
                     class="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded font-medium"
                 >Configuration</a>
@@ -946,4 +950,197 @@ pub async fn config_editor() -> Html<String> {
 </html>
 "#;
     Html(html.to_string())
+}
+
+/// Service management page
+pub async fn service_manager(State(state): State<SharedState>) -> Html<String> {
+    let state = state.read().await;
+    
+    // Get list of configured services
+    let services_list: Vec<String> = state.config.services.keys().cloned().collect();
+    
+    let services_html: String = services_list
+        .iter()
+        .map(|service_name| {
+            let service_config = &state.config.services[service_name];
+            format!(
+                r#"
+                <tr class="border-b border-gray-700 hover:bg-gray-800">
+                    <td class="px-4 py-3">{}</td>
+                    <td class="px-4 py-3">{}</td>
+                    <td class="px-4 py-3">
+                        <span class="service-status text-gray-400" data-service="{}">Loading...</span>
+                    </td>
+                    <td class="px-4 py-3">
+                        <div class="flex space-x-2">
+                            <button 
+                                class="px-2 py-1 text-xs bg-green-600 hover:bg-green-700 rounded service-start"
+                                data-service="{}"
+                            >Start</button>
+                            <button 
+                                class="px-2 py-1 text-xs bg-red-600 hover:bg-red-700 rounded service-stop"
+                                data-service="{}"
+                            >Stop</button>
+                        </div>
+                    </td>
+                </tr>
+                "#,
+                service_name,
+                service_config.image,
+                service_name,
+                service_name,
+                service_name
+            )
+        })
+        .collect();
+
+    let html = format!(
+        r#"
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Services - Scratchpad</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <header class="mb-8">
+            <a href="/" class="text-blue-400 hover:underline mb-4 inline-block">&larr; Back to Dashboard</a>
+            <h1 class="text-3xl font-bold mb-2">Shared Services</h1>
+            <p class="text-gray-400">Manage shared infrastructure services</p>
+        </header>
+
+        <div id="error-message" class="bg-red-900 text-red-200 p-4 rounded mb-6 hidden"></div>
+
+        <div class="bg-gray-800 rounded-lg overflow-hidden shadow-xl">
+            <div class="p-6 border-b border-gray-700">
+                <div class="flex space-x-4">
+                    <button 
+                        id="start-all"
+                        class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded font-medium"
+                    >Start All Services</button>
+                    <button 
+                        id="stop-all"
+                        class="px-4 py-2 bg-red-600 hover:bg-red-700 rounded font-medium"
+                    >Stop All Services</button>
+                </div>
+            </div>
+
+            <table class="w-full">
+                <thead class="bg-gray-700">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-sm font-semibold">Service Name</th>
+                        <th class="px-4 py-3 text-left text-sm font-semibold">Image</th>
+                        <th class="px-4 py-3 text-left text-sm font-semibold">Status</th>
+                        <th class="px-4 py-3 text-left text-sm font-semibold">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        (function() {{
+            const errorDiv = document.getElementById('error-message');
+
+            function showError(msg) {{
+                errorDiv.textContent = msg;
+                errorDiv.classList.remove('hidden');
+                setTimeout(() => errorDiv.classList.add('hidden'), 5000);
+            }}
+
+            async function loadServiceStatus() {{
+                try {{
+                    const response = await fetch('/api/services');
+                    const data = await response.json();
+                    if (data.success && data.data) {{
+                        Object.entries(data.data).forEach(([service, status]) => {{
+                            const statusEl = document.querySelector(`.service-status[data-service="${{service}}"]`);
+                            if (statusEl) {{
+                                statusEl.textContent = status;
+                                statusEl.className = `service-status ${{status === 'running' ? 'text-green-500' : 'text-red-500'}}`;
+                            }}
+                        }});
+                    }}
+                }} catch (error) {{
+                    console.error('Failed to load service status:', error);
+                }}
+            }}
+
+            async function startService(service) {{
+                try {{
+                    const response = await fetch(`/api/services/${{service}}/start`, {{
+                        method: 'POST',
+                    }});
+                    if (response.ok) {{
+                        setTimeout(loadServiceStatus, 1000);
+                    }} else {{
+                        showError(`Failed to start ${{service}}`);
+                    }}
+                }} catch (error) {{
+                    showError(`Error starting ${{service}}: ${{error.message}}`);
+                }}
+            }}
+
+            async function stopService(service) {{
+                try {{
+                    const response = await fetch(`/api/services/${{service}}/stop`, {{
+                        method: 'POST',
+                    }});
+                    if (response.ok) {{
+                        setTimeout(loadServiceStatus, 1000);
+                    }} else {{
+                        showError(`Failed to stop ${{service}}`);
+                    }}
+                }} catch (error) {{
+                    showError(`Error stopping ${{service}}: ${{error.message}}`);
+                }}
+            }}
+
+            // Event listeners
+            document.getElementById('start-all').addEventListener('click', async () => {{
+                const response = await fetch('/api/services/start', {{ method: 'POST' }});
+                if (response.ok) {{
+                    setTimeout(loadServiceStatus, 1000);
+                }} else {{
+                    showError('Failed to start all services');
+                }}
+            }});
+
+            document.getElementById('stop-all').addEventListener('click', async () => {{
+                const response = await fetch('/api/services/stop', {{ method: 'POST' }});
+                if (response.ok) {{
+                    setTimeout(loadServiceStatus, 1000);
+                }} else {{
+                    showError('Failed to stop all services');
+                }}
+            }});
+
+            document.querySelectorAll('.service-start').forEach(btn => {{
+                btn.addEventListener('click', () => startService(btn.dataset.service));
+            }});
+
+            document.querySelectorAll('.service-stop').forEach(btn => {{
+                btn.addEventListener('click', () => stopService(btn.dataset.service));
+            }});
+
+            // Initial load
+            loadServiceStatus();
+            
+            // Refresh every 5 seconds
+            setInterval(loadServiceStatus, 5000);
+        }})();
+    </script>
+</body>
+</html>
+        "#,
+        services_html
+    );
+
+    Html(html)
 }

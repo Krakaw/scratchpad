@@ -73,11 +73,14 @@ fn create_router(state: SharedState) -> Router {
         .route("/api/services", get(routes::list_services))
         .route("/api/services/start", post(routes::start_services))
         .route("/api/services/stop", post(routes::stop_services))
+        .route("/api/services/:service/start", post(routes::start_service))
+        .route("/api/services/:service/stop", post(routes::stop_service))
         // WebSocket route
         .route("/ws", get(websocket::ws_handler))
         // UI routes
         .route("/", get(crate::ui::dashboard))
         .route("/config", get(crate::ui::config_editor))
+        .route("/services", get(crate::ui::service_manager))
         .route("/scratches/create", get(crate::ui::create_scratch))
         .route("/scratches/:name", get(crate::ui::scratch_detail))
         // Middleware
