@@ -122,6 +122,9 @@ pub enum Commands {
         #[command(subcommand)]
         action: ServicesAction,
     },
+
+    /// Check system health and Docker connectivity
+    Doctor,
 }
 
 #[derive(Subcommand)]

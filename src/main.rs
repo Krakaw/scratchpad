@@ -52,5 +52,6 @@ async fn main() -> Result<()> {
         Commands::Status { name } => cli::commands::status(&name).await,
         Commands::Nginx { action } => cli::commands::nginx(action).await,
         Commands::Services { action } => cli::commands::services(action).await,
+        Commands::Doctor => cli::commands::doctor().await,
     }
 }

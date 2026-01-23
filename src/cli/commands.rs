@@ -2,6 +2,7 @@
 
 use anyhow::Result;
 use std::fs;
+use colored::Colorize;
 
 use crate::cli::{error, info, print_scratch_detail, print_scratch_table, success, warn, confirm, NginxAction, OutputFormat, ServicesAction};
 use crate::config::{self, Config};
@@ -330,5 +331,115 @@ fn load_config() -> Result<Config> {
 }
 
 async fn get_docker_client(config: &Config) -> Result<DockerClient> {
-    DockerClient::new(config.docker.clone()).map_err(|e| anyhow::anyhow!("{}", e))
+    match DockerClient::new(config.docker.clone()) {
+        Ok(client) => {
+            // Test the connection
+            if let Err(e) = client.ping().await {
+                return Err(anyhow::anyhow!(
+                    "Failed to connect to Docker daemon at {}: {}",
+                    config.docker.socket,
+                    e
+                ));
+            }
+            Ok(client)
+        }
+        Err(e) => {
+            Err(anyhow::anyhow!(
+                "Failed to initialize Docker client for socket {}: {}",
+                config.docker.socket,
+                e
+            ))
+        }
+    }
+}
+
+/// Perform health checks and diagnostics
+pub async fn doctor() -> Result<()> {
+    println!();
+    println!("{}", "Scratchpad Health Check".bold().underline());
+    println!();
+
+    // 1. Check config file
+    println!("{}  Checking configuration...", "→".blue());
+    match load_config() {
+        Ok(config) => {
+            success("Configuration file found and valid");
+            println!("    Location: scratchpad.toml");
+            println!("    Docker socket: {}", config.docker.socket);
+            println!("    Releases directory: {}", config.server.releases_dir.display());
+
+            // 2. Check Docker connection
+            println!();
+            println!("{}  Checking Docker connection...", "→".blue());
+            match get_docker_client(&config).await {
+                Ok(docker) => {
+                    success("Docker connection successful");
+                    
+                    // Try to list containers
+                    match docker.inner().list_containers::<&str>(None).await {
+                        Ok(containers) => {
+                            success(&format!("Docker API working ({} containers found)", containers.len()));
+                        }
+                        Err(e) => {
+                            error(&format!("Failed to list containers: {}", e));
+                        }
+                    }
+                }
+                Err(e) => {
+                    error(&format!("Docker connection failed: {}", e));
+                    println!();
+                    println!("  {} Make sure:", "⚠".yellow());
+                    println!("    1. Docker daemon is running");
+                    println!("    2. Socket exists: {}", config.docker.socket);
+                    println!("    3. You have permissions to access the socket");
+                    println!();
+                    println!("  {} Try these commands:", "💡".blue());
+                    println!("    - Check if socket exists: ls -la {}", config.docker.socket);
+                    println!("    - Check if Docker is running: docker ps");
+                    println!("    - Check permissions: id (verify you're in docker group)");
+                }
+            }
+
+            // 3. Check releases directory
+            println!();
+            println!("{}  Checking releases directory...", "→".blue());
+            match std::fs::metadata(&config.server.releases_dir) {
+                Ok(metadata) => {
+                    if metadata.is_dir() {
+                        success(&format!(
+                            "Releases directory accessible ({})",
+                            config.server.releases_dir.display()
+                        ));
+                    } else {
+                        error("Releases path exists but is not a directory");
+                    }
+                }
+                Err(e) => {
+                    warn(&format!(
+                        "Releases directory not accessible: {} (will be created when needed)",
+                        e
+                    ));
+                }
+            }
+
+            // 4. Check nginx (if enabled)
+            if config.nginx.enabled {
+                println!();
+                println!("{}  Checking nginx...", "→".blue());
+                success(&format!("Nginx enabled for domain: {}", config.nginx.domain));
+            }
+
+            println!();
+            println!("{}", "✓ Health check complete".green());
+        }
+        Err(e) => {
+            error(&format!("Configuration error: {}", e));
+            println!();
+            println!("  {} Initialize with:", "💡".blue());
+            println!("    scratchpad init");
+        }
+    }
+
+    println!();
+    Ok(())
 }
