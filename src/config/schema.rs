@@ -131,6 +131,17 @@ pub struct NginxConfig {
     /// Container name for nginx (used for reload)
     #[serde(default)]
     pub container: Option<String>,
+
+    /// Use dynamic routing (default: true)
+    /// When true, nginx uses variables to route based on subdomain/path
+    /// When false, generates static config entries per scratch
+    #[serde(default)]
+    pub dynamic: Option<bool>,
+
+    /// The service name that acts as the ingress point for each scratch
+    /// e.g., "api" means requests route to <scratch>-api container
+    #[serde(default)]
+    pub ingress_service: Option<String>,
 }
 
 fn default_nginx_enabled() -> bool {
@@ -158,6 +169,8 @@ impl Default for NginxConfig {
             domain: default_nginx_domain(),
             routing: default_nginx_routing(),
             container: None,
+            dynamic: None,
+            ingress_service: None,
         }
     }
 }

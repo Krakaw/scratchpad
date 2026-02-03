@@ -4,7 +4,7 @@ use anyhow::Result;
 use std::fs;
 use colored::Colorize;
 
-use crate::cli::{error, info, print_scratch_detail, print_scratch_table, success, warn, confirm, NginxAction, OutputFormat, ServicesAction};
+use crate::cli::{error, info, print_scratch_detail, print_scratch_table, success, warn, confirm, NginxAction, OutputFormat, ServicesAction, ConfigAction};
 use crate::config::{self, Config};
 use crate::docker::DockerClient;
 use crate::nginx;
@@ -300,6 +300,14 @@ pub async fn services(action: ServicesAction) -> Result<()> {
 
     match action {
         ServicesAction::Start => {
+            // Generate nginx config before starting services (if nginx is enabled)
+            if config.nginx.enabled && config.services.contains_key("nginx") {
+                info("Generating nginx configuration...");
+                if let Err(e) = nginx::regenerate_config(&config, &docker).await {
+                    warn(&format!("Failed to generate nginx config: {}", e));
+                }
+            }
+            
             match services::start_shared_services(&config, &docker).await {
                 Ok(_) => success("Started shared services"),
                 Err(e) => {
@@ -365,6 +373,157 @@ pub async fn services(action: ServicesAction) -> Result<()> {
             println!();
             info("Run 'scratchpad services start' to recreate with current config");
         }
+        ServicesAction::Restart => {
+            info("Restarting shared services...");
+            services::stop_shared_services(&config, &docker).await?;
+            services::start_shared_services(&config, &docker).await?;
+            
+            // Also start nginx if enabled
+            if config.nginx.enabled {
+                start_nginx_if_needed(&config, &docker).await?;
+            }
+            
+            success("Restarted shared services");
+        }
+    }
+
+    Ok(())
+}
+
+/// Update an existing scratch environment
+pub async fn update(name: &str, restart: bool) -> Result<()> {
+    let config = load_config()?;
+    let docker = get_docker_client(&config).await?;
+
+    info(&format!("Updating scratch: {}", name));
+
+    match scratch::update_scratch(&config, &docker, name).await {
+        Ok(()) => {
+            success(&format!("Updated scratch: {}", name));
+            
+            if restart {
+                info("Restarting scratch...");
+                scratch::restart_scratch(&config, &docker, name).await?;
+                success("Scratch restarted");
+            } else {
+                info("Run 'scratchpad restart <name>' to apply changes");
+            }
+            
+            Ok(())
+        }
+        Err(e) => {
+            error(&format!("Failed to update scratch: {}", e));
+            Err(e.into())
+        }
+    }
+}
+
+/// Configuration management commands
+pub async fn config(action: ConfigAction) -> Result<()> {
+    use crate::cli::ConfigAction;
+    
+    match action {
+        ConfigAction::Check => {
+            println!("{}  Validating configuration...", "→".blue());
+            
+            match config::load_config() {
+                Ok(cfg) => {
+                    success("Configuration is valid");
+                    println!();
+                    
+                    // Show summary
+                    println!("{}:", "Services".bold());
+                    let shared: Vec<_> = cfg.services.iter()
+                        .filter(|(_, s)| s.shared)
+                        .map(|(n, _)| n.as_str())
+                        .collect();
+                    let per_scratch: Vec<_> = cfg.services.iter()
+                        .filter(|(_, s)| !s.shared)
+                        .map(|(n, _)| n.as_str())
+                        .collect();
+                    
+                    if !shared.is_empty() {
+                        println!("  Shared: {}", shared.join(", "));
+                    }
+                    if !per_scratch.is_empty() {
+                        println!("  Per-scratch: {}", per_scratch.join(", "));
+                    }
+                    
+                    println!();
+                    println!("{}:", "Nginx".bold());
+                    println!("  Enabled: {}", cfg.nginx.enabled);
+                    if cfg.nginx.enabled {
+                        println!("  Domain: {}", cfg.nginx.domain);
+                    }
+                    
+                    println!();
+                    println!("{}:", "Docker".bold());
+                    println!("  Socket: {}", cfg.docker.socket);
+                    println!("  Network: {}", cfg.docker.network);
+                    
+                    // Validate services have required fields
+                    let mut warnings = Vec::new();
+                    for (name, svc) in &cfg.services {
+                        if svc.image.is_empty() {
+                            warnings.push(format!("Service '{}' has no image specified", name));
+                        }
+                        if !svc.shared && svc.port.is_none() {
+                            warnings.push(format!("Per-scratch service '{}' has no port - it won't be accessible", name));
+                        }
+                    }
+                    
+                    if !warnings.is_empty() {
+                        println!();
+                        warn("Warnings:");
+                        for w in warnings {
+                            println!("  • {}", w);
+                        }
+                    }
+                }
+                Err(e) => {
+                    error(&format!("Configuration is invalid: {}", e));
+                    return Err(anyhow::anyhow!("{}", e));
+                }
+            }
+            
+            Ok(())
+        }
+        ConfigAction::Show => {
+            let config_path = std::path::Path::new("scratchpad.toml");
+            
+            if !config_path.exists() {
+                error("No scratchpad.toml found in current directory");
+                info("Run 'scratchpad setup' to create one");
+                return Ok(());
+            }
+            
+            let content = fs::read_to_string(config_path)?;
+            println!("{}", content);
+            
+            Ok(())
+        }
+    }
+}
+
+/// Start nginx container if not running
+async fn start_nginx_if_needed(config: &Config, docker: &DockerClient) -> Result<()> {
+    if !config.nginx.enabled {
+        return Ok(());
+    }
+
+    // Check if nginx container exists in services config
+    if let Some(nginx_svc) = config.services.get("nginx") {
+        if nginx_svc.shared {
+            services::ensure_shared_service_running(config, docker, "nginx").await?;
+            return Ok(());
+        }
+    }
+
+    // If no nginx service defined, try to create a default one
+    // For now, just warn
+    if config.nginx.container.is_none() {
+        warn("Nginx is enabled but no nginx service or container is configured");
+        info("Add a shared nginx service to your config, or set nginx.container");
     }
 
     Ok(())

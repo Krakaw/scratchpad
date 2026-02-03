@@ -84,7 +84,15 @@ pub async fn ensure_shared_service_running(
         (None, None) => vec![],
     };
 
-    let volumes = service_config.volumes.clone();
+    let mut volumes = service_config.volumes.clone();
+    
+    // Special handling for nginx - mount the generated config
+    if service_name == "nginx" && config.nginx.enabled {
+        let config_path = config.nginx.config_path.canonicalize()
+            .unwrap_or_else(|_| config.nginx.config_path.clone());
+        let config_mount = format!("{}:/etc/nginx/conf.d/scratches.conf:ro", config_path.display());
+        volumes.push(config_mount);
+    }
 
     docker
         .create_container(
