@@ -30,6 +30,7 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
+        Commands::Setup { quick } => cli::setup::run_setup_wizard(quick).await,
         Commands::Init => cli::commands::init().await,
         Commands::Create {
             branch,

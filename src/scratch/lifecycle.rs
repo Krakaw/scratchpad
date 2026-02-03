@@ -187,6 +187,13 @@ async fn start_scratch_compose(scratch_dir: &Path) -> Result<()> {
 async fn stop_scratch_compose(scratch_dir: &Path) -> Result<()> {
     use tokio::process::Command;
 
+    // Check if compose.yml exists - if not, nothing to stop
+    let compose_path = scratch_dir.join("compose.yml");
+    if !compose_path.exists() {
+        tracing::debug!("No compose.yml found in {}, skipping docker compose down", scratch_dir.display());
+        return Ok(());
+    }
+
     tracing::debug!("Running 'docker compose down' in {}", scratch_dir.display());
     let output = Command::new("docker")
         .args(["compose", "down"])

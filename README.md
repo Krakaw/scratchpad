@@ -140,7 +140,7 @@ routing = "subdomain"  # or "path"
 
 # Shared services available to all scratches
 [services.postgres]
-image = "postgres:16"
+image = "postgres:18"
 shared = true
 port = 5432
 env = { POSTGRES_PASSWORD = "postgres", POSTGRES_USER = "postgres" }
@@ -148,7 +148,7 @@ healthcheck = "pg_isready -U postgres"
 
 # Per-scratch services (one per scratch)
 [services.redis]
-image = "redis:7-alpine"
+image = "redis:8-alpine"
 shared = false
 healthcheck = "redis-cli ping"
 

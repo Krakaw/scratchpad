@@ -57,10 +57,32 @@ pub async fn ensure_shared_service_running(
         .map(|(k, v)| format!("{}={}", k, v))
         .collect();
 
-    let ports: Vec<(u16, u16)> = service_config
-        .port
-        .map(|p| vec![(p, p)])
-        .unwrap_or_default();
+    // Determine internal port (container port) - use internal_port if set,
+    // otherwise derive from known images, or fall back to host port
+    let internal_port = service_config.internal_port.or_else(|| {
+        // Known default ports for common images
+        let image_lower = service_config.image.to_lowercase();
+        if image_lower.contains("postgres") {
+            Some(5432)
+        } else if image_lower.contains("mysql") || image_lower.contains("mariadb") {
+            Some(3306)
+        } else if image_lower.contains("redis") {
+            Some(6379)
+        } else if image_lower.contains("mongo") {
+            Some(27017)
+        } else if image_lower.contains("kafka") {
+            Some(9092)
+        } else {
+            service_config.port
+        }
+    });
+
+    let ports: Vec<(u16, u16)> = match (service_config.port, internal_port) {
+        (Some(host), Some(container)) => vec![(host, container)],
+        (Some(p), None) => vec![(p, p)],
+        (None, Some(p)) => vec![(p, p)],
+        (None, None) => vec![],
+    };
 
     let volumes = service_config.volumes.clone();
 
@@ -187,5 +209,28 @@ pub async fn stop_service(
     tracing::info!("Stopped shared service: {}", service_name);
 
     Ok(())
+}
+
+/// Remove all shared service containers (stop and delete)
+pub async fn clean_shared_services(docker: &DockerClient) -> Result<Vec<String>> {
+    let containers = docker.list_shared_service_containers().await?;
+    let mut removed = Vec::new();
+
+    for container in containers {
+        // Stop if running
+        if container.state == "running" {
+            docker.stop_container(&container.id).await?;
+        }
+        
+        // Remove container
+        docker.remove_container(&container.id, false).await?;
+        
+        let service_name = container.name.strip_prefix("scratchpad-")
+            .unwrap_or(&container.name)
+            .to_string();
+        removed.push(service_name);
+    }
+
+    Ok(removed)
 }
 

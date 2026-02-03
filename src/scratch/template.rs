@@ -24,7 +24,7 @@ services:
 {% endif %}
 {% if service.environment %}
     environment:
-{% for key, value in service.environment %}
+{% for key, value in service.environment|items %}
       {{ key }}: "{{ value }}"
 {% endfor %}
 {% endif %}
