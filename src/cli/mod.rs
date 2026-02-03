@@ -2,6 +2,7 @@
 
 pub mod commands;
 mod output;
+pub mod setup;
 
 pub use output::*;
 
@@ -19,7 +20,14 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Commands {
-    /// Initialize a new scratchpad.toml configuration file
+    /// Interactive setup wizard (recommended for first-time users)
+    Setup {
+        /// Skip interactive prompts and use defaults
+        #[arg(short, long)]
+        quick: bool,
+    },
+
+    /// Initialize a new scratchpad.toml configuration file (basic)
     Init,
 
     /// Create a new scratch environment from a branch
