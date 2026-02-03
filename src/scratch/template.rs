@@ -85,6 +85,14 @@ pub fn render_template(config: &Config, scratch: &Scratch) -> Result<String> {
                 }
             }
 
+            // Add Redis URL if redis is a configured service
+            if config.services.contains_key("redis") {
+                env_vars.insert(
+                    "REDIS_URL".to_string(),
+                    "redis://scratchpad-redis:6379".to_string(),
+                );
+            }
+
             if !env_vars.is_empty() {
                 service_data.insert("environment".to_string(), serde_json::to_value(env_vars)?);
             }
@@ -97,11 +105,12 @@ pub fn render_template(config: &Config, scratch: &Scratch) -> Result<String> {
                 );
             }
 
-            // Port
-            if let Some(port) = service_config.port {
+            // Port mapping (host:container)
+            if let Some(host_port) = service_config.port {
+                let container_port = service_config.internal_port.unwrap_or(host_port);
                 service_data.insert(
                     "ports".to_string(),
-                    serde_json::to_value(vec![format!("{}:{}", port, port)])?,
+                    serde_json::to_value(vec![format!("{}:{}", host_port, container_port)])?,
                 );
             }
 
