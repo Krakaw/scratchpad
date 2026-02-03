@@ -151,24 +151,63 @@ fn print_welcome() {
 async fn run_preflight_checks() -> Result<bool> {
     let mut all_passed = true;
 
-    // Check 1: Docker socket
-    print!("  {} Checking Docker socket... ", "→".blue());
-    let docker_socket = "/var/run/docker.sock";
-    if Path::new(docker_socket).exists() {
-        println!("{}", "found".green());
-    } else {
-        println!("{}", "not found".red());
-        println!(
-            "    {} Docker socket not found at {}",
-            "⚠".yellow(),
-            docker_socket
-        );
-        all_passed = false;
+    // Check 1: Find Docker socket (supports OrbStack, Docker Desktop, standard Linux)
+    print!("  {} Looking for Docker socket... ", "→".blue());
+    
+    let home_dir = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+    let socket_candidates = vec![
+        // OrbStack (macOS)
+        format!("{}/.orbstack/run/docker.sock", home_dir),
+        // Docker Desktop (macOS)
+        format!("{}/.docker/run/docker.sock", home_dir),
+        // Default Linux
+        "/var/run/docker.sock".to_string(),
+    ];
+
+    let mut found_socket: Option<String> = None;
+    for candidate in &socket_candidates {
+        if Path::new(candidate).exists() {
+            found_socket = Some(candidate.clone());
+            break;
+        }
+    }
+
+    match &found_socket {
+        Some(socket) => {
+            let socket_type = if socket.contains("orbstack") {
+                "OrbStack"
+            } else if socket.contains(".docker") {
+                "Docker Desktop"
+            } else {
+                "Docker"
+            };
+            println!("{} ({})", "found".green(), socket_type);
+        }
+        None => {
+            println!("{}", "not found".red());
+            println!(
+                "    {} No Docker socket found. Checked:",
+                "⚠".yellow()
+            );
+            for candidate in &socket_candidates {
+                println!("       - {}", candidate);
+            }
+            all_passed = false;
+        }
     }
 
     // Check 2: Docker connection
     print!("  {} Connecting to Docker... ", "→".blue());
-    match bollard::Docker::connect_with_socket_defaults() {
+    
+    // Try to connect using the same logic as DockerClient
+    let docker_result = if let Some(ref socket) = found_socket {
+        bollard::Docker::connect_with_unix(socket, 120, bollard::API_DEFAULT_VERSION)
+    } else {
+        // Fall back to default connection attempt
+        bollard::Docker::connect_with_socket_defaults()
+    };
+
+    match docker_result {
         Ok(docker) => {
             match docker.ping().await {
                 Ok(_) => println!("{}", "connected".green()),
@@ -182,7 +221,7 @@ async fn run_preflight_checks() -> Result<bool> {
         Err(e) => {
             println!("{}", "failed".red());
             println!("    {} Could not connect: {}", "⚠".yellow(), e);
-            println!("    {} Is Docker running? Try: docker ps", "💡".blue());
+            println!("    {} Is Docker/OrbStack running?", "💡".blue());
             all_passed = false;
         }
     }
