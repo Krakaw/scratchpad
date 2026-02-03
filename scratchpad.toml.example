@@ -27,7 +27,7 @@ routing = "subdomain"  # or "path"
 
 # Shared services
 [services.postgres]
-image = "postgres:16"
+image = "postgres:18"
 shared = true
 port = 5432
 auto_create_db = true
@@ -35,7 +35,7 @@ env = { POSTGRES_PASSWORD = "postgres", POSTGRES_USER = "postgres" }
 healthcheck = "pg_isready -U postgres"
 
 [services.redis]
-image = "redis:7-alpine"
+image = "redis:8-alpine"
 shared = false  # Each scratch gets its own instance
 healthcheck = "redis-cli ping"
 

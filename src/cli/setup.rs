@@ -304,8 +304,8 @@ fn gather_config(theme: &ColorfulTheme) -> Result<Config> {
     println!();
 
     let service_options = vec![
-        ("PostgreSQL", "postgres", "Database - postgres:16"),
-        ("Redis", "redis", "Cache/queue - redis:7-alpine"),
+        ("PostgreSQL", "postgres", "Database - postgres:18"),
+        ("Redis", "redis", "Cache/queue - redis:8-alpine"),
         ("MySQL", "mysql", "Database - mysql:8"),
         ("MongoDB", "mongodb", "NoSQL database - mongo:7"),
     ];
@@ -332,7 +332,7 @@ fn gather_config(theme: &ColorfulTheme) -> Result<Config> {
         let (_, key, _) = &service_options[idx];
         let service = match *key {
             "postgres" => ServiceConfig {
-                image: "postgres:16".to_string(),
+                image: "postgres:18".to_string(),
                 shared: true,
                 port: Some(5432),
                 internal_port: None, // derived from image
@@ -346,7 +346,7 @@ fn gather_config(theme: &ColorfulTheme) -> Result<Config> {
                 connection: None,
             },
             "redis" => ServiceConfig {
-                image: "redis:7-alpine".to_string(),
+                image: "redis:8-alpine".to_string(),
                 shared: false,
                 port: None,
                 internal_port: None,
@@ -578,7 +578,7 @@ async fn run_quick_setup() -> Result<()> {
     services.insert(
         "postgres".to_string(),
         ServiceConfig {
-            image: "postgres:16".to_string(),
+            image: "postgres:18".to_string(),
             shared: true,
             port: Some(5432),
             internal_port: None,
@@ -595,7 +595,7 @@ async fn run_quick_setup() -> Result<()> {
     services.insert(
         "redis".to_string(),
         ServiceConfig {
-            image: "redis:7-alpine".to_string(),
+            image: "redis:8-alpine".to_string(),
             shared: false,
             port: None,
             internal_port: None,
