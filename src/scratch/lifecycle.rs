@@ -78,14 +78,23 @@ pub async fn create_scratch(
 
     // Provision shared services and databases
     let mut databases: HashMap<String, Vec<String>> = HashMap::new();
+    
+    // Ensure all shared services are running
     for service_name in &services {
         if let Some(service_config) = config.get_service(service_name) {
-            if service_config.shared && service_config.auto_create_db {
-                // For postgres, create a database
-                if service_name == "postgres" {
+            if service_config.shared {
+                // For nginx, generate config before starting
+                if service_name == "nginx" && config.nginx.enabled {
+                    tracing::debug!("Generating nginx configuration");
+                    nginx::regenerate_config(config, docker).await?;
+                }
+                
+                tracing::debug!("Ensuring shared service is running: {}", service_name);
+                services::ensure_shared_service_running(config, docker, service_name).await?;
+                
+                // For postgres, also create a database
+                if service_name == "postgres" && service_config.auto_create_db {
                     let db_name = format!("scratch_{}", scratch_name);
-                    tracing::debug!("Ensuring PostgreSQL service is running");
-                    services::ensure_shared_service_running(config, docker, service_name).await?;
                     tracing::debug!("Creating database: {}", db_name);
                     services::create_postgres_database(config, &db_name).await?;
                     databases
