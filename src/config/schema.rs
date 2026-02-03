@@ -131,6 +131,16 @@ pub struct NginxConfig {
     /// Container name for nginx (used for reload)
     #[serde(default)]
     pub container: Option<String>,
+
+    /// Use dynamic routing (default: true)
+    /// When true, nginx uses variables to route based on subdomain/path
+    /// When false, generates static config entries per scratch
+    #[serde(default)]
+    pub dynamic: Option<bool>,
+
+    /// Upstream port for per-scratch services (default: 3000)
+    #[serde(default)]
+    pub upstream_port: Option<u16>,
 }
 
 fn default_nginx_enabled() -> bool {
@@ -158,6 +168,8 @@ impl Default for NginxConfig {
             domain: default_nginx_domain(),
             routing: default_nginx_routing(),
             container: None,
+            dynamic: None,
+            upstream_port: None,
         }
     }
 }

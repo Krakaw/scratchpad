@@ -7,10 +7,94 @@ use crate::docker::DockerClient;
 use crate::error::Result;
 use crate::scratch;
 
-/// Nginx configuration template
-const NGINX_TEMPLATE: &str = r#"
+/// Dynamic nginx configuration template using variables to route to scratches
+/// Uses the subdomain or path as the scratch name to find the upstream
+const NGINX_DYNAMIC_TEMPLATE: &str = r#"
 # Scratchpad Nginx Configuration
 # Auto-generated - do not edit manually
+# 
+# This config dynamically routes requests based on subdomain/path
+# No regeneration needed when creating new scratches!
+
+# Resolver for dynamic upstream resolution (Docker DNS)
+resolver 127.0.0.11 valid=10s ipv6=off;
+
+{% if routing == "subdomain" %}
+# Wildcard subdomain routing: <scratch-name>.{{ domain }} -> <scratch-name>-api:3000
+server {
+    listen 80;
+    server_name ~^(?<scratch>.+)\.{{ domain_escaped }}$;
+
+    location / {
+        set $upstream ${scratch}-api:{{ upstream_port }};
+        proxy_pass http://$upstream;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+        
+        # Handle upstream not found
+        proxy_intercept_errors on;
+        error_page 502 503 504 = @scratch_not_found;
+    }
+    
+    location @scratch_not_found {
+        return 404 'Scratch "$scratch" not found or not running\n';
+        add_header Content-Type text/plain;
+    }
+}
+
+{% else %}
+# Path-based routing: {{ domain }}/<scratch-name>/* -> <scratch-name>-api:3000
+server {
+    listen 80;
+    server_name {{ domain }};
+
+    # Extract scratch name from path and proxy
+    location ~ ^/(?<scratch>[^/]+)(?:/(?<path>.*))?$ {
+        set $upstream ${scratch}-api:{{ upstream_port }};
+        
+        # Rewrite to remove scratch prefix
+        rewrite ^/[^/]+/?(.*)$ /$1 break;
+        
+        proxy_pass http://$upstream;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Scratchpad-Name $scratch;
+        proxy_cache_bypass $http_upgrade;
+        
+        # Handle upstream not found
+        proxy_intercept_errors on;
+        error_page 502 503 504 = @scratch_not_found;
+    }
+    
+    location @scratch_not_found {
+        return 404 'Scratch not found or not running\n';
+        add_header Content-Type text/plain;
+    }
+    
+    location = / {
+        return 200 'Scratchpad is running. Access scratches at: {{ domain }}/<scratch-name>/\n';
+        add_header Content-Type text/plain;
+    }
+}
+{% endif %}
+"#;
+
+/// Static nginx configuration template (one entry per scratch)
+/// Used when dynamic resolution isn't desired
+const NGINX_STATIC_TEMPLATE: &str = r#"
+# Scratchpad Nginx Configuration
+# Auto-generated - regenerate with 'scratchpad nginx generate'
 
 {% for scratch in scratches %}
 upstream scratch_{{ scratch.name }} {
@@ -69,24 +153,45 @@ pub async fn regenerate_config(config: &Config, docker: &DockerClient) -> Result
         return Ok(());
     }
 
-    // Get list of scratches
-    let scratches = scratch::list_scratches(config, docker).await?;
-
-    // Render template
     use minijinja::{context, Environment};
 
     let mut env = Environment::new();
-    env.add_template("nginx", NGINX_TEMPLATE)?;
-
-    let template = env.get_template("nginx")?;
-    let rendered = template.render(context! {
-        scratches => scratches,
-        domain => config.nginx.domain,
-        routing => match config.nginx.routing {
-            NginxRouting::Subdomain => "subdomain",
-            NginxRouting::Path => "path",
-        },
-    })?;
+    
+    // Use dynamic config by default, static if explicitly requested
+    let use_dynamic = config.nginx.dynamic.unwrap_or(true);
+    
+    let rendered = if use_dynamic {
+        env.add_template("nginx", NGINX_DYNAMIC_TEMPLATE)?;
+        let template = env.get_template("nginx")?;
+        
+        // Escape dots in domain for regex
+        let domain_escaped = config.nginx.domain.replace('.', r"\.");
+        
+        template.render(context! {
+            domain => config.nginx.domain,
+            domain_escaped => domain_escaped,
+            upstream_port => config.nginx.upstream_port.unwrap_or(3000),
+            routing => match config.nginx.routing {
+                NginxRouting::Subdomain => "subdomain",
+                NginxRouting::Path => "path",
+            },
+        })?
+    } else {
+        // Static config - needs scratch list
+        let scratches = scratch::list_scratches(config, docker).await?;
+        
+        env.add_template("nginx", NGINX_STATIC_TEMPLATE)?;
+        let template = env.get_template("nginx")?;
+        
+        template.render(context! {
+            scratches => scratches,
+            domain => config.nginx.domain,
+            routing => match config.nginx.routing {
+                NginxRouting::Subdomain => "subdomain",
+                NginxRouting::Path => "path",
+            },
+        })?
+    };
 
     // Write config file
     if let Some(parent) = config.nginx.config_path.parent() {

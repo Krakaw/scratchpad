@@ -413,6 +413,8 @@ fn gather_config(theme: &ColorfulTheme) -> Result<Config> {
             domain,
             routing,
             container: None,
+            dynamic: Some(true),
+            upstream_port: None,
         },
         github: None,
         services,
