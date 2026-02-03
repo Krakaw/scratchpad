@@ -300,6 +300,14 @@ pub async fn services(action: ServicesAction) -> Result<()> {
 
     match action {
         ServicesAction::Start => {
+            // Generate nginx config before starting services (if nginx is enabled)
+            if config.nginx.enabled && config.services.contains_key("nginx") {
+                info("Generating nginx configuration...");
+                if let Err(e) = nginx::regenerate_config(&config, &docker).await {
+                    warn(&format!("Failed to generate nginx config: {}", e));
+                }
+            }
+            
             match services::start_shared_services(&config, &docker).await {
                 Ok(_) => success("Started shared services"),
                 Err(e) => {

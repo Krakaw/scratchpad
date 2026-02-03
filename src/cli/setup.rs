@@ -304,8 +304,9 @@ fn gather_config(theme: &ColorfulTheme) -> Result<Config> {
     println!();
 
     let service_options = vec![
-        ("PostgreSQL", "postgres", "Database - postgres:18"),
-        ("Redis", "redis", "Cache/queue - redis:8-alpine"),
+        ("PostgreSQL", "postgres", "Database - postgres:16"),
+        ("Redis", "redis", "Cache/queue - redis:7-alpine"),
+        ("Nginx", "nginx", "Reverse proxy - nginx:alpine"),
         ("MySQL", "mysql", "Database - mysql:8"),
         ("MongoDB", "mongodb", "NoSQL database - mongo:7"),
     ];
@@ -318,7 +319,7 @@ fn gather_config(theme: &ColorfulTheme) -> Result<Config> {
         })
         .collect();
 
-    let defaults = vec![true, true, false, false]; // postgres and redis by default
+    let defaults = vec![true, true, true, false, false]; // postgres, redis, nginx by default
     let selected_indices = MultiSelect::with_theme(theme)
         .with_prompt("Services (space to toggle, enter to confirm)")
         .items(&service_names)
@@ -346,13 +347,24 @@ fn gather_config(theme: &ColorfulTheme) -> Result<Config> {
                 connection: None,
             },
             "redis" => ServiceConfig {
-                image: "redis:8-alpine".to_string(),
-                shared: false,
-                port: None,
+                image: "redis:7-alpine".to_string(),
+                shared: true,
+                port: Some(6379),
                 internal_port: None,
                 env: HashMap::new(),
                 volumes: vec![],
                 healthcheck: Some("redis-cli ping".to_string()),
+                auto_create_db: false,
+                connection: None,
+            },
+            "nginx" => ServiceConfig {
+                image: "nginx:alpine".to_string(),
+                shared: true,
+                port: Some(80),
+                internal_port: Some(80),
+                env: HashMap::new(),
+                volumes: vec![],
+                healthcheck: None,
                 auto_create_db: false,
                 connection: None,
             },
