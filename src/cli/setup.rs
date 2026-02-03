@@ -426,7 +426,7 @@ fn gather_config(theme: &ColorfulTheme) -> Result<Config> {
             routing,
             container: None,
             dynamic: Some(true),
-            upstream_port: None,
+            ingress_service: None, // Will be set after service selection
         },
         github: None,
         services,

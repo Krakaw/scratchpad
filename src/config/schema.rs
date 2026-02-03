@@ -138,9 +138,10 @@ pub struct NginxConfig {
     #[serde(default)]
     pub dynamic: Option<bool>,
 
-    /// Upstream port for per-scratch services (default: 3000)
+    /// The service name that acts as the ingress point for each scratch
+    /// e.g., "api" means requests route to <scratch>-api container
     #[serde(default)]
-    pub upstream_port: Option<u16>,
+    pub ingress_service: Option<String>,
 }
 
 fn default_nginx_enabled() -> bool {
@@ -169,7 +170,7 @@ impl Default for NginxConfig {
             routing: default_nginx_routing(),
             container: None,
             dynamic: None,
-            upstream_port: None,
+            ingress_service: None,
         }
     }
 }

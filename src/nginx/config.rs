@@ -4,7 +4,7 @@ use std::fs;
 
 use crate::config::{Config, NginxRouting};
 use crate::docker::DockerClient;
-use crate::error::Result;
+use crate::error::{Error, Result};
 use crate::scratch;
 
 /// Dynamic nginx configuration template using variables to route to scratches
@@ -15,18 +15,21 @@ const NGINX_DYNAMIC_TEMPLATE: &str = r#"
 # 
 # This config dynamically routes requests based on subdomain/path
 # No regeneration needed when creating new scratches!
+#
+# Ingress service: {{ ingress_service }}
+# Upstream port: {{ upstream_port }}
 
 # Resolver for dynamic upstream resolution (Docker DNS)
 resolver 127.0.0.11 valid=10s ipv6=off;
 
 {% if routing == "subdomain" %}
-# Wildcard subdomain routing: <scratch-name>.{{ domain }} -> <scratch-name>-api:3000
+# Wildcard subdomain routing: <scratch-name>.{{ domain }} -> <scratch-name>-{{ ingress_service }}:{{ upstream_port }}
 server {
     listen 80;
     server_name ~^(?<scratch>.+)\.{{ domain_escaped }}$;
 
     location / {
-        set $upstream ${scratch}-api:{{ upstream_port }};
+        set $upstream ${scratch}-{{ ingress_service }}:{{ upstream_port }};
         proxy_pass http://$upstream;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
@@ -49,14 +52,14 @@ server {
 }
 
 {% else %}
-# Path-based routing: {{ domain }}/<scratch-name>/* -> <scratch-name>-api:3000
+# Path-based routing: {{ domain }}/<scratch-name>/* -> <scratch-name>-{{ ingress_service }}:{{ upstream_port }}
 server {
     listen 80;
     server_name {{ domain }};
 
     # Extract scratch name from path and proxy
     location ~ ^/(?<scratch>[^/]+)(?:/(?<path>.*))?$ {
-        set $upstream ${scratch}-api:{{ upstream_port }};
+        set $upstream ${scratch}-{{ ingress_service }}:{{ upstream_port }};
         
         # Rewrite to remove scratch prefix
         rewrite ^/[^/]+/?(.*)$ /$1 break;
@@ -95,10 +98,13 @@ server {
 const NGINX_STATIC_TEMPLATE: &str = r#"
 # Scratchpad Nginx Configuration
 # Auto-generated - regenerate with 'scratchpad nginx generate'
+#
+# Ingress service: {{ ingress_service }}
+# Upstream port: {{ upstream_port }}
 
 {% for scratch in scratches %}
 upstream scratch_{{ scratch.name }} {
-    server {{ scratch.name }}-api:3000;
+    server {{ scratch.name }}-{{ ingress_service }}:{{ upstream_port }};
 }
 
 {% endfor %}
@@ -155,6 +161,17 @@ pub async fn regenerate_config(config: &Config, docker: &DockerClient) -> Result
 
     use minijinja::{context, Environment};
 
+    // Get ingress service name - required for nginx to work
+    let ingress_service = config.nginx.ingress_service.clone()
+        .ok_or_else(|| Error::Config(
+            "nginx.ingress_service must be set to specify which service handles incoming requests".to_string()
+        ))?;
+    
+    // Get the port from the ingress service config
+    let upstream_port = config.services.get(&ingress_service)
+        .and_then(|svc| svc.internal_port.or(svc.port))
+        .unwrap_or(3000);
+
     let mut env = Environment::new();
     
     // Use dynamic config by default, static if explicitly requested
@@ -170,7 +187,8 @@ pub async fn regenerate_config(config: &Config, docker: &DockerClient) -> Result
         template.render(context! {
             domain => config.nginx.domain,
             domain_escaped => domain_escaped,
-            upstream_port => config.nginx.upstream_port.unwrap_or(3000),
+            ingress_service => ingress_service,
+            upstream_port => upstream_port,
             routing => match config.nginx.routing {
                 NginxRouting::Subdomain => "subdomain",
                 NginxRouting::Path => "path",
@@ -186,6 +204,8 @@ pub async fn regenerate_config(config: &Config, docker: &DockerClient) -> Result
         template.render(context! {
             scratches => scratches,
             domain => config.nginx.domain,
+            ingress_service => ingress_service,
+            upstream_port => upstream_port,
             routing => match config.nginx.routing {
                 NginxRouting::Subdomain => "subdomain",
                 NginxRouting::Path => "path",
