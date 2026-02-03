@@ -57,10 +57,32 @@ pub async fn ensure_shared_service_running(
         .map(|(k, v)| format!("{}={}", k, v))
         .collect();
 
-    let ports: Vec<(u16, u16)> = service_config
-        .port
-        .map(|p| vec![(p, p)])
-        .unwrap_or_default();
+    // Determine internal port (container port) - use internal_port if set,
+    // otherwise derive from known images, or fall back to host port
+    let internal_port = service_config.internal_port.or_else(|| {
+        // Known default ports for common images
+        let image_lower = service_config.image.to_lowercase();
+        if image_lower.contains("postgres") {
+            Some(5432)
+        } else if image_lower.contains("mysql") || image_lower.contains("mariadb") {
+            Some(3306)
+        } else if image_lower.contains("redis") {
+            Some(6379)
+        } else if image_lower.contains("mongo") {
+            Some(27017)
+        } else if image_lower.contains("kafka") {
+            Some(9092)
+        } else {
+            service_config.port
+        }
+    });
+
+    let ports: Vec<(u16, u16)> = match (service_config.port, internal_port) {
+        (Some(host), Some(container)) => vec![(host, container)],
+        (Some(p), None) => vec![(p, p)],
+        (None, Some(p)) => vec![(p, p)],
+        (None, None) => vec![],
+    };
 
     let volumes = service_config.volumes.clone();
 

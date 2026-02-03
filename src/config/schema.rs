@@ -190,8 +190,13 @@ pub struct ServiceConfig {
     #[serde(default)]
     pub shared: bool,
 
+    /// Host port to expose the service on
     #[serde(default)]
     pub port: Option<u16>,
+
+    /// Internal container port (defaults to same as port, or standard port for known images)
+    #[serde(default)]
+    pub internal_port: Option<u16>,
 
     #[serde(default)]
     pub env: HashMap<String, String>,

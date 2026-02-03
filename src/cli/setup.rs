@@ -335,6 +335,7 @@ fn gather_config(theme: &ColorfulTheme) -> Result<Config> {
                 image: "postgres:16".to_string(),
                 shared: true,
                 port: Some(5432),
+                internal_port: None, // derived from image
                 env: HashMap::from([
                     ("POSTGRES_USER".to_string(), "postgres".to_string()),
                     ("POSTGRES_PASSWORD".to_string(), "postgres".to_string()),
@@ -348,6 +349,7 @@ fn gather_config(theme: &ColorfulTheme) -> Result<Config> {
                 image: "redis:7-alpine".to_string(),
                 shared: false,
                 port: None,
+                internal_port: None,
                 env: HashMap::new(),
                 volumes: vec![],
                 healthcheck: Some("redis-cli ping".to_string()),
@@ -358,6 +360,7 @@ fn gather_config(theme: &ColorfulTheme) -> Result<Config> {
                 image: "mysql:8".to_string(),
                 shared: true,
                 port: Some(3306),
+                internal_port: None,
                 env: HashMap::from([
                     ("MYSQL_ROOT_PASSWORD".to_string(), "mysql".to_string()),
                 ]),
@@ -370,6 +373,7 @@ fn gather_config(theme: &ColorfulTheme) -> Result<Config> {
                 image: "mongo:7".to_string(),
                 shared: true,
                 port: Some(27017),
+                internal_port: None,
                 env: HashMap::new(),
                 volumes: vec![],
                 healthcheck: Some("mongosh --eval 'db.runCommand(\"ping\").ok'".to_string()),
@@ -577,6 +581,7 @@ async fn run_quick_setup() -> Result<()> {
             image: "postgres:16".to_string(),
             shared: true,
             port: Some(5432),
+            internal_port: None,
             env: HashMap::from([
                 ("POSTGRES_USER".to_string(), "postgres".to_string()),
                 ("POSTGRES_PASSWORD".to_string(), "postgres".to_string()),
@@ -593,6 +598,7 @@ async fn run_quick_setup() -> Result<()> {
             image: "redis:7-alpine".to_string(),
             shared: false,
             port: None,
+            internal_port: None,
             env: HashMap::new(),
             volumes: vec![],
             healthcheck: Some("redis-cli ping".to_string()),
