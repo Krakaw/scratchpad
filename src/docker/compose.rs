@@ -9,7 +9,7 @@ use crate::error::Result;
 /// Docker Compose file structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ComposeFile {
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub version: Option<String>,
 
     #[serde(default)]
