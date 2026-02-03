@@ -300,8 +300,27 @@ pub async fn services(action: ServicesAction) -> Result<()> {
 
     match action {
         ServicesAction::Start => {
-            services::start_shared_services(&config, &docker).await?;
-            success("Started shared services");
+            match services::start_shared_services(&config, &docker).await {
+                Ok(_) => success("Started shared services"),
+                Err(e) => {
+                    let err_str = e.to_string();
+                    error(&format!("Failed to start services: {}", e));
+                    
+                    // Check for common issues and provide helpful messages
+                    if err_str.contains("port is already allocated") || err_str.contains("address already in use") {
+                        println!();
+                        warn("A port conflict was detected. This usually means:");
+                        println!("  1. Another service is using the port, OR");
+                        println!("  2. An old scratchpad container exists with different port settings");
+                        println!();
+                        info("To fix, try one of:");
+                        println!("  • Change the port in scratchpad.toml");
+                        println!("  • Run 'scratchpad services clean' to remove old containers");
+                        println!("  • Stop the conflicting service (e.g., local postgres)");
+                    }
+                    return Err(e.into());
+                }
+            }
         }
         ServicesAction::Stop => {
             services::stop_shared_services(&config, &docker).await?;
@@ -318,6 +337,33 @@ pub async fn services(action: ServicesAction) -> Result<()> {
                     println!("  {} {} ({})", icon, name, state);
                 }
             }
+        }
+        ServicesAction::Clean { force } => {
+            let containers = docker.list_shared_service_containers().await?;
+            
+            if containers.is_empty() {
+                info("No shared service containers to clean");
+                return Ok(());
+            }
+
+            if !force {
+                println!("This will remove the following service containers:");
+                for c in &containers {
+                    let name = c.name.strip_prefix("scratchpad-").unwrap_or(&c.name);
+                    println!("  • {} ({})", name, c.state);
+                }
+                println!();
+                
+                if !confirm("Are you sure you want to remove these containers?")? {
+                    info("Cancelled");
+                    return Ok(());
+                }
+            }
+
+            let removed = services::clean_shared_services(&docker).await?;
+            success(&format!("Removed {} service container(s): {}", removed.len(), removed.join(", ")));
+            println!();
+            info("Run 'scratchpad services start' to recreate with current config");
         }
     }
 

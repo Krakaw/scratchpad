@@ -211,3 +211,26 @@ pub async fn stop_service(
     Ok(())
 }
 
+/// Remove all shared service containers (stop and delete)
+pub async fn clean_shared_services(docker: &DockerClient) -> Result<Vec<String>> {
+    let containers = docker.list_shared_service_containers().await?;
+    let mut removed = Vec::new();
+
+    for container in containers {
+        // Stop if running
+        if container.state == "running" {
+            docker.stop_container(&container.id).await?;
+        }
+        
+        // Remove container
+        docker.remove_container(&container.id, false).await?;
+        
+        let service_name = container.name.strip_prefix("scratchpad-")
+            .unwrap_or(&container.name)
+            .to_string();
+        removed.push(service_name);
+    }
+
+    Ok(removed)
+}
+

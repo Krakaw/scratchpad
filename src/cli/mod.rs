@@ -157,6 +157,13 @@ pub enum ServicesAction {
 
     /// Show status of shared services
     Status,
+
+    /// Remove all shared service containers (allows recreation with new config)
+    Clean {
+        /// Skip confirmation prompt
+        #[arg(short, long)]
+        force: bool,
+    },
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
