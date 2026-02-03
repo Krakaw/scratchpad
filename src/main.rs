@@ -38,6 +38,7 @@ async fn main() -> Result<()> {
             profile,
             template,
         } => cli::commands::create(&branch, name, profile, template).await,
+        Commands::Update { name, restart } => cli::commands::update(&name, restart).await,
         Commands::List { format } => cli::commands::list(format).await,
         Commands::Start { name } => cli::commands::start(&name).await,
         Commands::Stop { name } => cli::commands::stop(&name).await,
@@ -53,6 +54,7 @@ async fn main() -> Result<()> {
         Commands::Status { name } => cli::commands::status(&name).await,
         Commands::Nginx { action } => cli::commands::nginx(action).await,
         Commands::Services { action } => cli::commands::services(action).await,
+        Commands::Config { action } => cli::commands::config(action).await,
         Commands::Doctor => cli::commands::doctor().await,
     }
 }

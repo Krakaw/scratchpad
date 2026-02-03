@@ -49,6 +49,16 @@ pub enum Commands {
         template: Option<String>,
     },
 
+    /// Update an existing scratch environment (regenerate compose from current config)
+    Update {
+        /// Name of the scratch to update
+        name: String,
+
+        /// Restart services after updating
+        #[arg(short, long)]
+        restart: bool,
+    },
+
     /// List all scratch environments
     List {
         /// Output format
@@ -131,6 +141,12 @@ pub enum Commands {
         action: ServicesAction,
     },
 
+    /// Configuration management
+    Config {
+        #[command(subcommand)]
+        action: ConfigAction,
+    },
+
     /// Check system health and Docker connectivity
     Doctor,
 }
@@ -149,11 +165,14 @@ pub enum NginxAction {
 
 #[derive(Subcommand)]
 pub enum ServicesAction {
-    /// Start all shared services
+    /// Start all shared services (including nginx if enabled)
     Start,
 
     /// Stop all shared services
     Stop,
+
+    /// Restart all shared services
+    Restart,
 
     /// Show status of shared services
     Status,
@@ -164,6 +183,15 @@ pub enum ServicesAction {
         #[arg(short, long)]
         force: bool,
     },
+}
+
+#[derive(Subcommand)]
+pub enum ConfigAction {
+    /// Validate the configuration file
+    Check,
+
+    /// Show the current configuration
+    Show,
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum)]

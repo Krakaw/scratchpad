@@ -249,6 +249,48 @@ pub async fn restart_scratch(config: &Config, docker: &DockerClient, name: &str)
     Ok(())
 }
 
+/// Update a scratch environment (regenerate compose.yml from current config)
+pub async fn update_scratch(config: &Config, _docker: &DockerClient, name: &str) -> Result<()> {
+    let scratch_dir = config.server.releases_dir.join(name);
+
+    if !scratch_dir.exists() {
+        return Err(Error::ScratchNotFound(name.to_string()));
+    }
+
+    // Load existing scratch config
+    let scratch_config_path = scratch_dir.join(".scratchpad.toml");
+    if !scratch_config_path.exists() {
+        return Err(Error::Config(format!(
+            "Scratch config not found at {}",
+            scratch_config_path.display()
+        )));
+    }
+
+    let content = fs::read_to_string(&scratch_config_path)?;
+    let scratch_config: ScratchConfig = toml::from_str(&content)
+        .map_err(|e| Error::Config(format!("Failed to parse scratch config: {}", e)))?;
+
+    // Rebuild the Scratch struct
+    let scratch = Scratch {
+        name: scratch_config.name.clone(),
+        branch: scratch_config.branch.clone(),
+        template: scratch_config.template.clone(),
+        services: scratch_config.services.clone(),
+        databases: scratch_config.databases.clone(),
+        env: scratch_config.env.clone(),
+        created_at: scratch_config.created_at,
+    };
+
+    // Re-render compose file with current global config
+    tracing::debug!("Re-rendering compose file for scratch: {}", name);
+    let compose = render_compose_file(config, &scratch)?;
+    let compose_path = scratch_dir.join("compose.yml");
+    compose.save(&compose_path)?;
+
+    tracing::info!("Updated scratch compose file: {}", name);
+    Ok(())
+}
+
 /// Delete a scratch environment
 pub async fn delete_scratch(
     config: &Config,
