@@ -10,9 +10,9 @@ The original Scratchpad used bash scripts, Node.js Express, and React with high 
 - **Pure Rust CLI + HTTP API** - fast, reliable, no runtime dependencies
 - **Minimal web UI** - uses htmx instead of React
 - **Auto-managed Docker** - automatic network, volume, and service management
-- **Built-in nginx routing** - subdomain or path-based routing out of the box
-- **Shared services** - optional PostgreSQL, Redis, Kafka shared across scratches
-- **Per-scratch services** - or dedicate services to individual scratches
+- **Built-in nginx routing** - dynamic wildcard routing, no reload needed per scratch
+- **Shared services** - PostgreSQL, Redis, Nginx shared across all scratches
+- **Per-scratch services** - your app containers, one set per scratch
 
 ## Quick Start
 
@@ -24,34 +24,35 @@ cargo build --release
 ./target/release/scratchpad --version
 ```
 
-### Basic Setup
+### Interactive Setup (Recommended)
+
+```bash
+scratchpad setup
+```
+
+This walks you through:
+- Docker socket detection
+- Domain and routing configuration
+- Service selection (PostgreSQL, Redis, Nginx, etc.)
+- Creates a ready-to-use `scratchpad.toml`
+
+### Manual Setup
 
 1. **Initialize configuration:**
    ```bash
    scratchpad init
    ```
-   This creates `scratchpad.toml` with sensible defaults.
 
-2. **Edit configuration** (optional):
+2. **Edit `scratchpad.toml`** to configure services and nginx
+
+3. **Start shared services:**
    ```bash
-   cat scratchpad.toml.example  # See example configuration
-   # Customize services, docker settings, nginx routing, etc.
+   scratchpad services start
    ```
 
-3. **Create your first scratch from a branch:**
+4. **Create your first scratch:**
    ```bash
    scratchpad create --branch feature/my-feature
-   ```
-
-4. **View your scratches:**
-   ```bash
-   scratchpad list
-   ```
-
-5. **Start the HTTP API and web UI:**
-   ```bash
-   scratchpad serve
-   # Access at http://localhost:3456
    ```
 
 ## CLI Commands
@@ -68,53 +69,75 @@ scratchpad list
 # Get detailed status of a scratch
 scratchpad status <NAME>
 
-# Start a stopped scratch environment
+# Update a scratch (regenerate compose.yml from current config)
+scratchpad update <NAME> [--restart]
+
+# Start/stop/restart a scratch
 scratchpad start <NAME>
-
-# Stop a running scratch environment
 scratchpad stop <NAME>
-
-# Restart a scratch environment
 scratchpad restart <NAME>
 
-# Delete a scratch environment (with confirmation)
-scratchpad delete <NAME>
+# Delete a scratch environment
+scratchpad delete <NAME> [--force]
 
-# View logs from a scratch environment
-scratchpad logs <NAME> [--service <SERVICE>] [--tail <N>]
+# View logs
+scratchpad logs <NAME> [--service <SERVICE>] [--follow] [--tail <N>]
+```
+
+### Services Management
+
+```bash
+# Start all shared services (postgres, redis, nginx)
+scratchpad services start
+
+# Stop all shared services
+scratchpad services stop
+
+# Restart shared services with current config
+scratchpad services restart
+
+# View status of shared services
+scratchpad services status
+
+# Remove all shared service containers (for config changes)
+scratchpad services clean [--force]
+```
+
+### Nginx Configuration
+
+```bash
+# Generate/regenerate nginx configuration
+scratchpad nginx generate
+
+# Reload nginx
+scratchpad nginx reload
+
+# View current nginx config
+scratchpad nginx show
+```
+
+### Configuration Management
+
+```bash
+# Validate configuration and show summary
+scratchpad config check
+
+# Display current config file
+scratchpad config show
+```
+
+### System Health
+
+```bash
+# Check Docker connectivity and system health
+scratchpad doctor
 ```
 
 ### Server & API
 
 ```bash
 # Start the HTTP API server and web UI
-scratchpad serve [--port <PORT>]
-```
-
-### Services Management
-
-```bash
-# View status of shared services
-scratchpad services list
-
-# Start all shared services
-scratchpad services start
-
-# Stop all shared services
-scratchpad services stop
-```
-
-### Nginx Configuration
-
-```bash
-# Generate nginx configuration
-scratchpad nginx generate
-
-# Reload nginx configuration (requires docker or manual setup)
-scratchpad nginx reload
-
-# View current nginx config
-scratchpad nginx show
+scratchpad serve [--host <HOST>] [--port <PORT>]
 ```
 
 ## Configuration
@@ -128,116 +151,132 @@ port = 3456
 releases_dir = "./releases"
 
 [docker]
-socket = "/var/run/docker.sock"
+socket = "/var/run/docker.sock"  # or ~/.orbstack/run/docker.sock on macOS
 network = "scratchpad-network"
 label_prefix = "scratchpad"
 
 [nginx]
 enabled = true
 config_path = "./nginx/scratches.conf"
-domain = "scratches.localhost"
-routing = "subdomain"  # or "path"
+domain = "scratch.local"
+routing = "subdomain"        # or "path"
+dynamic = true               # use wildcard routing (no reload per scratch)
+ingress_service = "api"      # which service handles incoming requests
 
-# Shared services available to all scratches
+# Shared services (one instance, all scratches connect to it)
 [services.postgres]
-image = "postgres:18"
+image = "postgres:16"
 shared = true
-port = 5432
+port = 5432                  # host port
+internal_port = 5432         # container port
 env = { POSTGRES_PASSWORD = "postgres", POSTGRES_USER = "postgres" }
 healthcheck = "pg_isready -U postgres"
+auto_create_db = true        # create scratch_<name> database per scratch
 
-# Per-scratch services (one per scratch)
 [services.redis]
-image = "redis:8-alpine"
-shared = false
+image = "redis:7-alpine"
+shared = true
+port = 6379
 healthcheck = "redis-cli ping"
 
+[services.nginx]
+image = "nginx:alpine"
+shared = true
+port = 80
+
+# Per-scratch services (each scratch gets its own)
+[services.api]
+image = "myorg/api:latest"
+shared = false
+internal_port = 3000
+healthcheck = "curl -f http://localhost:3000/health"
+[services.api.env]
+NODE_ENV = "development"
+# DATABASE_URL and REDIS_URL are auto-injected
+
+[services.worker]
+image = "myorg/worker:latest"
+shared = false
+[services.worker.env]
+NODE_ENV = "development"
+
+# Default services for new scratches
 [scratch.defaults]
 template = "default"
-services = ["postgres", "redis"]
+services = ["postgres", "redis", "nginx", "api", "worker"]
 
-# Profiles for different scratch types
+# Profiles for different scratch configurations
 [scratch.profiles.minimal]
-services = ["postgres"]
+services = ["postgres", "api"]
 
 [scratch.profiles.full]
-services = ["postgres", "redis"]
+services = ["postgres", "redis", "nginx", "api", "worker"]
 ```
 
-### Configuration Options
-
-#### Server
-- `host`: Bind address for API server (default: `0.0.0.0`)
-- `port`: Port for API server (default: `3456`)
-- `releases_dir`: Directory where scratch environments are stored (default: `./releases`)
-
-#### Docker
-- `socket`: Path to Docker socket (default: `/var/run/docker.sock`)
-- `network`: Docker network name for scratches (default: `scratchpad-network`)
-- `label_prefix`: Prefix for Docker labels (default: `scratchpad`)
-
-#### Nginx
-- `enabled`: Enable nginx routing (default: `true`)
-- `config_path`: Path to generated nginx config
-- `domain`: Base domain for routing (e.g., `scratches.localhost`)
-- `routing`: `subdomain` or `path` based routing
-- `container`: (optional) Nginx container name for automatic reload
-- `reload_command`: (optional) Custom command to reload nginx
+### Key Configuration Options
 
 #### Services
-Each service can be configured with:
-- `image`: Docker image to use
-- `shared`: `true` for shared service, `false` for per-scratch
-- `port`: Port number
-- `env`: Environment variables as inline TOML table
-- `healthcheck`: Health check command
+
+| Option | Description |
+|--------|-------------|
+| `image` | Docker image to use |
+| `shared` | `true` = one instance for all scratches, `false` = per-scratch |
+| `port` | Host port to expose |
+| `internal_port` | Container port (defaults to host port or standard for known images) |
+| `env` | Environment variables |
+| `volumes` | Volume mounts |
+| `healthcheck` | Health check command |
+| `auto_create_db` | For postgres: create a database per scratch |
+
+#### Nginx
+
+| Option | Description |
+|--------|-------------|
+| `enabled` | Enable nginx routing |
+| `domain` | Base domain (e.g., `scratch.local`) |
+| `routing` | `subdomain` or `path` based routing |
+| `dynamic` | Use wildcard routing (default: true) |
+| `ingress_service` | Which service handles incoming requests |
+| `container` | Container name for reload (auto-detected if using shared nginx) |
+
+### Auto-Injected Environment Variables
+
+Per-scratch services automatically receive:
+
+- `DATABASE_URL` - Connection string to the scratch's postgres database
+- `REDIS_URL` - Connection string to shared redis (`redis://scratchpad-redis:6379`)
 
 ## Architecture
 
-### File Structure
-
-```
-scratchpad/
-├── Cargo.toml
-├── scratchpad.toml          # Your configuration
-├── scratchpad.toml.example  # Example configuration
-├── releases/                # Created scratch directories
-├── nginx/                   # Generated nginx configs
-├── logs/                    # Scratch environment logs
-└── src/
-    ├── main.rs              # CLI entry point
-    ├── error.rs             # Error handling
-    ├── config/              # Configuration loading
-    ├── cli/                 # CLI command implementations
-    ├── docker/              # Docker client and operations
-    ├── scratch/             # Scratch lifecycle management
-    ├── services/            # Shared services (postgres, redis, etc)
-    ├── nginx/               # Nginx config generation
-    ├── api/                 # HTTP API server
-    └── ui/                  # Web UI handlers
-```
-
 ### How It Works
 
-1. **Configuration Load**: `scratchpad.toml` is parsed to configure server, docker, nginx, and services
-2. **Docker Network**: Creates a Docker network for all scratches to communicate
-3. **Scratch Creation**:
-   - Generates unique name from branch (sanitized)
-   - Creates docker-compose.yml with configured services
-   - Starts containers with labels for tracking
-   - Creates nginx config for routing
-   - Reloads nginx
-4. **Service Provisioning**:
-   - Shared services (postgres, redis) run once and are reused
-   - Per-scratch services get their own containers
-   - All services get health checks for auto-restart
-5. **Routing**:
-   - Subdomain routing: `feature-my-branch.scratches.localhost`
-   - Path routing: `scratches.localhost/feature-my-branch`
+1. **Shared Services**: PostgreSQL, Redis, Nginx run once and are shared
+2. **Per-Scratch Services**: Your app containers, one set per scratch
+3. **Database Isolation**: Each scratch gets its own database (`scratch_<name>`)
+4. **Dynamic Routing**: Nginx routes based on subdomain/path without needing reload
+
+### Routing
+
+**Subdomain mode** (recommended):
+```
+feature-foo.scratch.local → feature-foo-api:3000
+my-test.scratch.local → my-test-api:3000
+```
+
+**Path mode**:
+```
+scratch.local/feature-foo/ → feature-foo-api:3000
+scratch.local/my-test/ → my-test-api:3000
+```
+
+### Container Naming
+
+- Shared services: `scratchpad-<service>` (e.g., `scratchpad-postgres`)
+- Per-scratch services: `<scratch>-<service>` (e.g., `feature-foo-api`)
 
 ## HTTP API
 
-When running `scratchpad serve`, the following REST endpoints are available:
+When running `scratchpad serve`:
 
 ```
 GET  /health                    # Health check
@@ -257,79 +296,48 @@ POST /services/start            # Start all services
 POST /services/stop             # Stop all services
 ```
 
-## GitHub Webhook Integration
-
-Configure a GitHub webhook to automatically create scratches for pull requests:
-
-1. Go to your GitHub repository settings
-2. Add webhook: `http://your-domain:3456/webhook/github`
-3. Select "Push events" and "Pull request events"
-4. Scratchpad will automatically create/update scratches
-
-## Advanced Usage
-
-### Custom Docker Compose
-
-Define custom docker-compose services in your scratch profiles:
-
-```toml
-[scratch.profiles.custom]
-services = ["postgres"]
-# Custom docker compose will be merged with generated one
-```
-
-### Environment Variables
-
-Use environment variable interpolation in config:
-
-```toml
-[services.postgres]
-env = { POSTGRES_PASSWORD = "${DB_PASSWORD}" }
-# Will use DB_PASSWORD environment variable
-```
-
-### Multiple Profiles
-
-Switch between different service setups:
-
-```bash
-# Create with minimal services
-scratchpad create --branch feature/api --profile minimal
-
-# Create with full services
-scratchpad create --branch feature/web --profile full
-```
-
 ## Troubleshooting
 
-### Docker connection refused
-Make sure Docker socket is accessible:
+### Port already in use
+
+If you change ports in config after containers exist:
 ```bash
+scratchpad services clean
+scratchpad services start
+```
+
+### Nginx not routing
+
+1. Check `nginx.ingress_service` matches your service name
+2. Verify the service has `internal_port` set
+3. Run `scratchpad nginx generate` then `scratchpad nginx reload`
+
+### Services not starting with scratch
+
+Make sure services are in `scratch.defaults.services`:
+```toml
+[scratch.defaults]
+services = ["postgres", "redis", "nginx", "api"]
+```
+
+### Docker connection refused
+
+```bash
+# Check socket exists
 ls -la /var/run/docker.sock
+
+# On macOS with OrbStack
+ls -la ~/.orbstack/run/docker.sock
+
 # Fix permissions if needed
 sudo usermod -aG docker $USER
 ```
 
-### Nginx reload fails
-If nginx is not in Docker, configure custom reload:
-```toml
-[nginx]
-reload_command = "sudo systemctl reload nginx"
-# or
-reload_command = "docker exec nginx nginx -s reload"
-```
+### Check configuration
 
-### Services not starting
-Check service logs:
 ```bash
-scratchpad logs <scratch-name> --service postgres
-```
-
-### Port already in use
-Scratches use dynamic ports. Ensure enough ports are available:
-```bash
-# Check what ports are in use
-docker ps --format "table {{.Names}}\t{{.Ports}}"
+scratchpad config check
+scratchpad doctor
 ```
 
 ## Development
@@ -346,44 +354,6 @@ cargo test
 cargo build --release
 ```
 
-### Code Structure
-
-- **Error Handling**: Custom error types in `src/error.rs`
-- **Configuration**: TOML parsing with environment variable support
-- **Docker**: Bollard client wrapper with async operations
-- **CLI**: Clap-based command parsing
-- **API**: Axum web framework
-- **Templates**: MiniJinja for docker-compose rendering
-
-## Migration from v1
-
-If you're using the original Scratchpad:
-
-1. The new format uses `scratchpad.toml` instead of multiple bash scripts
-2. Services are defined in TOML instead of docker-compose templates
-3. All Docker operations are handled automatically
-4. The CLI is more powerful but simpler to use
-
-## Performance
-
-- **Init time**: ~500ms to generate config
-- **Scratch creation**: ~2-3s (depends on image pull speed)
-- **List operation**: ~1-2s (depends on Docker daemon)
-- **API response**: <100ms for typical operations
-
 ## License
 
 MIT
-
-## Contributing
-
-Contributions welcome! Please:
-
-1. Fork the repository
-2. Create a feature branch
-3. Submit a pull request with tests
-
-## Support
-
-- GitHub Issues: Report bugs and request features
-- GitHub Discussions: Ask questions and share ideas

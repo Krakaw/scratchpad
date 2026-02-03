@@ -1,5 +1,6 @@
 # Scratchpad Configuration
 # See https://github.com/Krakaw/scratchpad for documentation
+# Run 'scratchpad setup' for interactive configuration
 
 [server]
 host = "0.0.0.0"
@@ -7,17 +8,18 @@ port = 3456
 releases_dir = "./releases"
 
 [docker]
-socket = "/var/run/docker.sock"
+socket = "/var/run/docker.sock"  # macOS with OrbStack: ~/.orbstack/run/docker.sock
 network = "scratchpad-network"
 label_prefix = "scratchpad"
 
 [nginx]
 enabled = true
 config_path = "./nginx/scratches.conf"
-domain = "scratches.localhost"
+domain = "scratch.local"
 routing = "subdomain"  # or "path"
-# container = "nginx"  # Container name for reload
-# reload_command = "docker exec nginx nginx -s reload"
+dynamic = true         # wildcard routing, no reload needed per scratch
+ingress_service = "api"  # which service handles incoming requests
+# container = "scratchpad-nginx"  # auto-set if nginx is a shared service
 
 # GitHub configuration (optional, for webhooks)
 # [github]
@@ -25,38 +27,64 @@ routing = "subdomain"  # or "path"
 # api_repo = "owner/api-repo"
 # web_repo = "owner/web-repo"
 
-# Shared services
+# =============================================================================
+# SHARED SERVICES - One instance, all scratches connect to it
+# =============================================================================
+
 [services.postgres]
-image = "postgres:18"
+image = "postgres:16"
 shared = true
 port = 5432
-auto_create_db = true
+internal_port = 5432
+auto_create_db = true  # creates scratch_<name> database per scratch
 env = { POSTGRES_PASSWORD = "postgres", POSTGRES_USER = "postgres" }
 healthcheck = "pg_isready -U postgres"
 
 [services.redis]
-image = "redis:8-alpine"
-shared = false  # Each scratch gets its own instance
+image = "redis:7-alpine"
+shared = true
+port = 6379
 healthcheck = "redis-cli ping"
 
-# Uncomment to add Kafka support
-# [services.kafka]
-# image = "bitnami/kafka:3.6"
-# shared = true
-# env = { ALLOW_PLAINTEXT_LISTENER = "yes" }
+[services.nginx]
+image = "nginx:alpine"
+shared = true
+port = 80
+internal_port = 80
 
-# Default scratch settings
+# =============================================================================
+# PER-SCRATCH SERVICES - Each scratch gets its own instance
+# =============================================================================
+
+# Example: Node.js API service
+# [services.api]
+# image = "myorg/api:latest"
+# shared = false
+# internal_port = 3000
+# healthcheck = "curl -f http://localhost:3000/health"
+# [services.api.env]
+# NODE_ENV = "development"
+# # DATABASE_URL and REDIS_URL are auto-injected
+
+# Example: Background worker
+# [services.worker]
+# image = "myorg/worker:latest"
+# shared = false
+# [services.worker.env]
+# NODE_ENV = "development"
+
+# =============================================================================
+# SCRATCH DEFAULTS & PROFILES
+# =============================================================================
+
 [scratch.defaults]
 template = "default"
-services = ["postgres", "redis"]
+services = ["postgres", "redis", "nginx"]  # add your per-scratch services here
 
-# Custom profiles for different use cases
+# Minimal profile - just database
 [scratch.profiles.minimal]
 services = ["postgres"]
 
+# Full profile - all services
 [scratch.profiles.full]
-services = ["postgres", "redis"]
-
-# Profile-specific environment variables
-# [scratch.profiles.full.env]
-# ENABLE_KAFKA = "true"
+services = ["postgres", "redis", "nginx"]
