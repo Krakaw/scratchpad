@@ -14,12 +14,10 @@ mod tests {
         };
 
         match DockerClient::new(config) {
-            Ok(client) => {
-                match client.ping().await {
-                    Ok(_) => println!("✓ Docker ping successful"),
-                    Err(e) => eprintln!("✗ Docker ping failed: {}", e),
-                }
-            }
+            Ok(client) => match client.ping().await {
+                Ok(_) => println!("✓ Docker ping successful"),
+                Err(e) => eprintln!("✗ Docker ping failed: {}", e),
+            },
             Err(e) => eprintln!("✗ Failed to create Docker client: {}", e),
         }
     }

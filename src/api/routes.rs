@@ -9,9 +9,9 @@ use axum::{
 use serde::{Deserialize, Serialize};
 
 use super::server::SharedState;
+use crate::auth;
 use crate::scratch;
 use crate::services;
-use crate::auth;
 
 // Request/Response types
 
@@ -57,7 +57,7 @@ impl<T: Serialize> ApiResponse<T> {
 // Auth routes
 
 pub async fn login(
-    State(state): State<SharedState>,
+    State(_state): State<SharedState>,
     Json(req): Json<auth::models::LoginRequest>,
 ) -> impl IntoResponse {
     // For now, create a default user for authentication
@@ -68,7 +68,8 @@ pub async fn login(
         return (
             StatusCode::UNAUTHORIZED,
             Json(ApiResponse::<()>::err("Invalid credentials")),
-        ).into_response();
+        )
+            .into_response();
     };
 
     // Create JWT token
@@ -85,7 +86,8 @@ pub async fn login(
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ApiResponse::<()>::err("Failed to create token")),
-            ).into_response()
+            )
+                .into_response()
         }
     }
 }
@@ -101,33 +103,28 @@ pub async fn verify_token(
             return (
                 StatusCode::BAD_REQUEST,
                 Json(ApiResponse::<()>::err("Token required")),
-            ).into_response();
+            )
+                .into_response();
         }
     };
 
     // Validate token
     match auth::validate_token(token) {
-        Ok(claims) => {
-            (StatusCode::OK, Json(ApiResponse::ok(claims))).into_response()
-        }
+        Ok(claims) => (StatusCode::OK, Json(ApiResponse::ok(claims))).into_response(),
         Err(e) => {
             tracing::warn!("Token validation failed: {}", e);
             (
                 StatusCode::UNAUTHORIZED,
                 Json(ApiResponse::<()>::err("Invalid token")),
-            ).into_response()
+            )
+                .into_response()
         }
     }
 }
 
-pub async fn get_current_user(
-    State(_state): State<SharedState>,
-) -> impl IntoResponse {
+pub async fn get_current_user(State(_state): State<SharedState>) -> impl IntoResponse {
     // In a real implementation, extract the user from the request context
-    let user = auth::models::User::new(
-        "current_user".to_string(),
-        auth::models::UserRole::User,
-    );
+    let user = auth::models::User::new("current_user".to_string(), auth::models::UserRole::User);
     (StatusCode::OK, Json(ApiResponse::ok(user))).into_response()
 }
 
@@ -141,7 +138,7 @@ pub async fn health() -> impl IntoResponse {
 
 pub async fn list_scratches(State(state): State<SharedState>) -> impl IntoResponse {
     let state = state.read().await;
-    
+
     match scratch::list_scratches(&state.config, &state.docker).await {
         Ok(scratches) => (StatusCode::OK, Json(ApiResponse::ok(scratches))),
         Err(_e) => (
@@ -167,9 +164,10 @@ pub async fn create_scratch(
     )
     .await
     {
-        Ok(scratch_instance) => {
-            (StatusCode::CREATED, Json(ApiResponse::ok(scratch_instance.name)))
-        }
+        Ok(scratch_instance) => (
+            StatusCode::CREATED,
+            Json(ApiResponse::ok(scratch_instance.name)),
+        ),
         Err(e) => {
             let error_msg = e.to_string();
             (
@@ -194,7 +192,10 @@ pub async fn get_scratch(
         Ok(status) => (StatusCode::OK, Json(ApiResponse::ok(status))),
         Err(_e) => (
             StatusCode::NOT_FOUND,
-            Json(ApiResponse::ok(scratch::ScratchStatus::new(name, "unknown".to_string()))),
+            Json(ApiResponse::ok(scratch::ScratchStatus::new(
+                name,
+                "unknown".to_string(),
+            ))),
         ),
     }
 }
@@ -263,7 +264,10 @@ pub async fn restart_scratch(
     let state = state.read().await;
 
     match scratch::restart_scratch(&state.config, &state.docker, &name).await {
-        Ok(()) => (StatusCode::OK, Json(ApiResponse::ok("restarted".to_string()))),
+        Ok(()) => (
+            StatusCode::OK,
+            Json(ApiResponse::ok("restarted".to_string())),
+        ),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ApiResponse {
@@ -286,7 +290,12 @@ pub async fn get_logs(
     // Get containers for this scratch
     let containers = match state.docker.list_scratch_containers(Some(&name)).await {
         Ok(c) => c,
-        Err(_e) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::ok(Vec::<String>::new()))),
+        Err(_e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::ok(Vec::<String>::new())),
+            )
+        }
     };
 
     // Filter by service if specified
@@ -346,7 +355,12 @@ pub async fn github_webhook(
         .ref_name
         .as_ref()
         .map(|r| r.strip_prefix("refs/heads/").unwrap_or(r).to_string())
-        .or_else(|| payload.pull_request.as_ref().map(|pr| pr.head.ref_name.clone()));
+        .or_else(|| {
+            payload
+                .pull_request
+                .as_ref()
+                .map(|pr| pr.head.ref_name.clone())
+        });
 
     let Some(branch) = branch else {
         return (
@@ -363,8 +377,17 @@ pub async fn github_webhook(
 
     // Create or update scratch
     let name = crate::scratch::Scratch::sanitize_name(&branch);
-    
-    match scratch::create_scratch(&state.config, &state.docker, &branch, Some(name), None, None).await {
+
+    match scratch::create_scratch(
+        &state.config,
+        &state.docker,
+        &branch,
+        Some(name),
+        None,
+        None,
+    )
+    .await
+    {
         Ok(s) => (StatusCode::OK, Json(ApiResponse::ok(s.name))),
         Err(e) => {
             tracing::error!("Failed to create scratch from webhook: {}", e);
@@ -389,7 +412,9 @@ pub async fn list_services(State(state): State<SharedState>) -> impl IntoRespons
         Ok(status) => (StatusCode::OK, Json(ApiResponse::ok(status))),
         Err(_e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ApiResponse::ok(std::collections::HashMap::<String, String>::new())),
+            Json(ApiResponse::ok(
+                std::collections::HashMap::<String, String>::new(),
+            )),
         ),
     }
 }
@@ -446,7 +471,7 @@ pub async fn update_config(
     Json(req): Json<UpdateConfigRequest>,
 ) -> impl IntoResponse {
     let mut state = state.write().await;
-    
+
     if let Some(server) = req.server {
         state.config.server = server;
     }
@@ -459,17 +484,22 @@ pub async fn update_config(
     if let Some(github) = req.github {
         state.config.github = Some(github);
     }
-    
+
     // Persist config to file
     if let Err(e) = crate::config::save_config(&state.config) {
         tracing::error!("Failed to save config: {}", e);
         return (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ApiResponse::<()>::err("Failed to save configuration")),
-        ).into_response();
+        )
+            .into_response();
     }
-    
-    (StatusCode::OK, Json(ApiResponse::ok("Config updated and persisted"))).into_response()
+
+    (
+        StatusCode::OK,
+        Json(ApiResponse::ok("Config updated and persisted")),
+    )
+        .into_response()
 }
 
 pub async fn start_service(
@@ -477,26 +507,26 @@ pub async fn start_service(
     Path(service): Path<String>,
 ) -> impl IntoResponse {
     let state = state.read().await;
-    
+
     // Check if service exists in config
     if !state.config.services.contains_key(&service) {
         return (
             StatusCode::NOT_FOUND,
             Json(ApiResponse::<()>::err("Service not found")),
-        ).into_response();
+        )
+            .into_response();
     }
-    
+
     // Start the service
     match services::start_service(&state.config, &state.docker, &service).await {
-        Ok(_) => {
-            (StatusCode::OK, Json(ApiResponse::ok("Service started"))).into_response()
-        }
+        Ok(_) => (StatusCode::OK, Json(ApiResponse::ok("Service started"))).into_response(),
         Err(e) => {
             tracing::error!("Failed to start service {}: {}", service, e);
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ApiResponse::<()>::err("Failed to start service")),
-            ).into_response()
+            )
+                .into_response()
         }
     }
 }
@@ -506,26 +536,26 @@ pub async fn stop_service(
     Path(service): Path<String>,
 ) -> impl IntoResponse {
     let state = state.read().await;
-    
+
     // Check if service exists in config
     if !state.config.services.contains_key(&service) {
         return (
             StatusCode::NOT_FOUND,
             Json(ApiResponse::<()>::err("Service not found")),
-        ).into_response();
+        )
+            .into_response();
     }
-    
+
     // Stop the service
     match services::stop_service(&state.docker, &service).await {
-        Ok(_) => {
-            (StatusCode::OK, Json(ApiResponse::ok("Service stopped"))).into_response()
-        }
+        Ok(_) => (StatusCode::OK, Json(ApiResponse::ok("Service stopped"))).into_response(),
         Err(e) => {
             tracing::error!("Failed to stop service {}: {}", service, e);
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ApiResponse::<()>::err("Failed to stop service")),
-            ).into_response()
+            )
+                .into_response()
         }
     }
 }

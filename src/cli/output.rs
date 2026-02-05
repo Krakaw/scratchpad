@@ -138,14 +138,12 @@ pub fn confirm(message: &str) -> crate::error::Result<bool> {
     use std::io::{self, Write};
 
     print!("{} [y/N] ", message);
-    io::stdout()
-        .flush()
-        .map_err(|e| crate::error::Error::Io(e))?;
+    io::stdout().flush().map_err(crate::error::Error::Io)?;
 
     let mut input = String::new();
     io::stdin()
         .read_line(&mut input)
-        .map_err(|e| crate::error::Error::Io(e))?;
+        .map_err(crate::error::Error::Io)?;
 
     Ok(matches!(input.trim().to_lowercase().as_str(), "y" | "yes"))
 }

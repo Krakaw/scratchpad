@@ -69,7 +69,10 @@ fn create_router(state: SharedState) -> Router {
         .route("/api/scratches/:name", delete(routes::delete_scratch))
         .route("/api/scratches/:name/start", post(routes::start_scratch))
         .route("/api/scratches/:name/stop", post(routes::stop_scratch))
-        .route("/api/scratches/:name/restart", post(routes::restart_scratch))
+        .route(
+            "/api/scratches/:name/restart",
+            post(routes::restart_scratch),
+        )
         .route("/api/scratches/:name/logs", get(routes::get_logs))
         // Webhook routes
         .route("/api/webhooks/github", post(routes::github_webhook))

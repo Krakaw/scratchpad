@@ -43,10 +43,7 @@ pub async fn reload(config: &Config, docker: &DockerClient) -> Result<()> {
 async fn execute_reload_command(command: &str) -> Result<()> {
     use tokio::process::Command;
 
-    let output = Command::new("sh")
-        .args(["-c", command])
-        .output()
-        .await?;
+    let output = Command::new("sh").args(["-c", command]).output().await?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -74,9 +71,7 @@ async fn reload_via_docker(docker: &DockerClient, container: &str) -> Result<()>
         Err(e) => {
             tracing::warn!("Failed to reload nginx in {}: {}", container, e);
             // Try alternative method
-            docker
-                .exec_command(container, vec!["nginx", "-t"])
-                .await?;
+            docker.exec_command(container, vec!["nginx", "-t"]).await?;
             docker
                 .exec_command(container, vec!["kill", "-HUP", "1"])
                 .await?;
@@ -86,6 +81,7 @@ async fn reload_via_docker(docker: &DockerClient, container: &str) -> Result<()>
 }
 
 /// Test nginx configuration
+#[allow(dead_code)]
 pub async fn test_config(config: &Config, docker: &DockerClient) -> Result<()> {
     if let Some(container_name) = &config.nginx.container {
         let output = docker

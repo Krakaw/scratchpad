@@ -12,7 +12,12 @@ impl DockerClient {
         let network_name = &self.config().network;
 
         // Check if network exists
-        if self.inner().inspect_network::<String>(network_name, None).await.is_ok() {
+        if self
+            .inner()
+            .inspect_network::<String>(network_name, None)
+            .await
+            .is_ok()
+        {
             tracing::debug!("Network {} already exists", network_name);
             return Ok(());
         }

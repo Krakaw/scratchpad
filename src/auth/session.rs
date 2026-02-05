@@ -60,7 +60,10 @@ impl SessionManager {
     pub async fn create_session(&self, user: User) -> String {
         let session = Session::new(user);
         let session_id = session.id.clone();
-        self.sessions.write().await.insert(session_id.clone(), session);
+        self.sessions
+            .write()
+            .await
+            .insert(session_id.clone(), session);
         session_id
     }
 

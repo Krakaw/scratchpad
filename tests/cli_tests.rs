@@ -1,6 +1,6 @@
 //! CLI command integration tests
 //! Tests the CLI interface for all commands
-//! 
+//!
 //! Run with: cargo test --test cli_tests
 //! Note: Some tests are marked #[ignore] for manual testing with real Docker
 
@@ -244,10 +244,10 @@ fn test_cli_create_command_minimal() {
 fn test_cli_command_enum_variants() {
     // Test that all command variants are available
     let commands = vec![
-        "init", "create", "list", "start", "stop", "restart",
-        "delete", "logs", "serve", "status", "nginx", "services"
+        "init", "create", "list", "start", "stop", "restart", "delete", "logs", "serve", "status",
+        "nginx", "services",
     ];
-    
+
     for cmd in commands {
         assert!(!cmd.is_empty());
     }
@@ -257,7 +257,7 @@ fn test_cli_command_enum_variants() {
 #[test]
 fn test_config_file_parsing() {
     let config_content = include_str!("../scratchpad.toml.example");
-    
+
     // Verify it can be parsed as TOML
     match toml::from_str::<toml::Value>(config_content) {
         Ok(table) => {
@@ -272,7 +272,7 @@ fn test_config_file_parsing() {
 fn test_config_file_required_sections() {
     let config_content = include_str!("../scratchpad.toml.example");
     let config: toml::Value = toml::from_str(config_content).expect("Failed to parse");
-    
+
     // Check required sections
     let required_sections = vec!["server", "docker", "nginx", "scratch", "services"];
     for section in required_sections {
@@ -288,14 +288,10 @@ fn test_config_file_required_sections() {
 #[test]
 fn test_output_format_variants() {
     use scratchpad::cli::OutputFormat;
-    
+
     // Test that all output formats can be used
-    let formats = vec![
-        OutputFormat::Table,
-        OutputFormat::Json,
-        OutputFormat::Yaml,
-    ];
-    
+    let formats = vec![OutputFormat::Table, OutputFormat::Json, OutputFormat::Yaml];
+
     assert_eq!(formats.len(), 3);
     println!("✓ All output format variants available");
 }
@@ -353,7 +349,7 @@ fn test_cli_create_name_options() {
 #[test]
 fn test_cli_logs_service_filter() {
     let services: Vec<Option<&str>> = vec![Some("postgres"), Some("redis"), Some("web"), None];
-    
+
     for service in services {
         if let Some(svc) = service {
             println!("✓ CLI logs service filter: {}", svc);

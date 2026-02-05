@@ -17,8 +17,8 @@ use std::path::Path;
 use std::time::Duration;
 
 use crate::config::{
-    Config, DockerConfig, NginxConfig, NginxRouting, ScratchDefaults, ScratchProfile,
-    ServerConfig, ServiceConfig,
+    Config, DockerConfig, NginxConfig, NginxRouting, ScratchDefaults, ScratchProfile, ServerConfig,
+    ServiceConfig,
 };
 use crate::docker::DockerClient;
 
@@ -55,10 +55,7 @@ pub async fn run_setup_wizard(non_interactive: bool) -> Result<()> {
     }
 
     println!();
-    println!(
-        "{}",
-        "Let's check your system first...".bold()
-    );
+    println!("{}", "Let's check your system first...".bold());
     println!();
 
     // Run pre-flight checks
@@ -137,14 +134,38 @@ pub async fn run_setup_wizard(non_interactive: bool) -> Result<()> {
 
 fn print_welcome() {
     println!();
-    println!("{}", "╔═══════════════════════════════════════════════════════════╗".cyan());
-    println!("{}", "║                                                           ║".cyan());
-    println!("{}", "║   🚀 Welcome to Scratchpad Setup                          ║".cyan());
-    println!("{}", "║                                                           ║".cyan());
-    println!("{}", "║   Scratchpad creates isolated environments for your       ║".cyan());
-    println!("{}", "║   Git branches - perfect for testing PRs and features.    ║".cyan());
-    println!("{}", "║                                                           ║".cyan());
-    println!("{}", "╚═══════════════════════════════════════════════════════════╝".cyan());
+    println!(
+        "{}",
+        "╔═══════════════════════════════════════════════════════════╗".cyan()
+    );
+    println!(
+        "{}",
+        "║                                                           ║".cyan()
+    );
+    println!(
+        "{}",
+        "║   🚀 Welcome to Scratchpad Setup                          ║".cyan()
+    );
+    println!(
+        "{}",
+        "║                                                           ║".cyan()
+    );
+    println!(
+        "{}",
+        "║   Scratchpad creates isolated environments for your       ║".cyan()
+    );
+    println!(
+        "{}",
+        "║   Git branches - perfect for testing PRs and features.    ║".cyan()
+    );
+    println!(
+        "{}",
+        "║                                                           ║".cyan()
+    );
+    println!(
+        "{}",
+        "╚═══════════════════════════════════════════════════════════╝".cyan()
+    );
     println!();
 }
 
@@ -153,7 +174,7 @@ async fn run_preflight_checks() -> Result<bool> {
 
     // Check 1: Find Docker socket (supports OrbStack, Docker Desktop, standard Linux)
     print!("  {} Looking for Docker socket... ", "→".blue());
-    
+
     let home_dir = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
     let socket_candidates = vec![
         // OrbStack (macOS)
@@ -185,10 +206,7 @@ async fn run_preflight_checks() -> Result<bool> {
         }
         None => {
             println!("{}", "not found".red());
-            println!(
-                "    {} No Docker socket found. Checked:",
-                "⚠".yellow()
-            );
+            println!("    {} No Docker socket found. Checked:", "⚠".yellow());
             for candidate in &socket_candidates {
                 println!("       - {}", candidate);
             }
@@ -198,7 +216,7 @@ async fn run_preflight_checks() -> Result<bool> {
 
     // Check 2: Docker connection
     print!("  {} Connecting to Docker... ", "→".blue());
-    
+
     // Try to connect using the same logic as DockerClient
     let docker_result = if let Some(ref socket) = found_socket {
         bollard::Docker::connect_with_unix(socket, 120, bollard::API_DEFAULT_VERSION)
@@ -208,16 +226,14 @@ async fn run_preflight_checks() -> Result<bool> {
     };
 
     match docker_result {
-        Ok(docker) => {
-            match docker.ping().await {
-                Ok(_) => println!("{}", "connected".green()),
-                Err(e) => {
-                    println!("{}", "failed".red());
-                    println!("    {} Could not ping Docker: {}", "⚠".yellow(), e);
-                    all_passed = false;
-                }
+        Ok(docker) => match docker.ping().await {
+            Ok(_) => println!("{}", "connected".green()),
+            Err(e) => {
+                println!("{}", "failed".red());
+                println!("    {} Could not ping Docker: {}", "⚠".yellow(), e);
+                all_passed = false;
             }
-        }
+        },
         Err(e) => {
             println!("{}", "failed".red());
             println!("    {} Could not connect: {}", "⚠".yellow(), e);
@@ -236,10 +252,7 @@ async fn run_preflight_checks() -> Result<bool> {
         }
         Err(_) => {
             println!("{}", "not writable".red());
-            println!(
-                "    {} Cannot write to current directory",
-                "⚠".yellow()
-            );
+            println!("    {} Cannot write to current directory", "⚠".yellow());
             all_passed = false;
         }
     }
@@ -282,7 +295,10 @@ fn gather_config(theme: &ColorfulTheme) -> Result<Config> {
         .default("scratches.localhost".to_string())
         .interact_text()?;
 
-    let routing_options = vec!["Subdomain (feature-branch.domain.com)", "Path (domain.com/feature-branch)"];
+    let routing_options = vec![
+        "Subdomain (feature-branch.domain.com)",
+        "Path (domain.com/feature-branch)",
+    ];
     let routing_idx = Select::with_theme(theme)
         .with_prompt("URL routing style")
         .items(&routing_options)
@@ -303,7 +319,7 @@ fn gather_config(theme: &ColorfulTheme) -> Result<Config> {
     );
     println!();
 
-    let service_options = vec![
+    let service_options = [
         ("PostgreSQL", "postgres", "Database - postgres:16"),
         ("Redis", "redis", "Cache/queue - redis:7-alpine"),
         ("Nginx", "nginx", "Reverse proxy - nginx:alpine"),
@@ -373,9 +389,7 @@ fn gather_config(theme: &ColorfulTheme) -> Result<Config> {
                 shared: true,
                 port: Some(3306),
                 internal_port: None,
-                env: HashMap::from([
-                    ("MYSQL_ROOT_PASSWORD".to_string(), "mysql".to_string()),
-                ]),
+                env: HashMap::from([("MYSQL_ROOT_PASSWORD".to_string(), "mysql".to_string())]),
                 volumes: vec![],
                 healthcheck: Some("mysqladmin ping -h localhost".to_string()),
                 auto_create_db: false,
@@ -460,31 +474,32 @@ fn gather_config(theme: &ColorfulTheme) -> Result<Config> {
 
 fn print_config_summary(config: &Config) {
     println!("  {} {}", "Domain:".bold(), config.nginx.domain);
-    println!(
-        "  {} {:?}",
-        "Routing:".bold(),
-        config.nginx.routing
-    );
+    println!("  {} {:?}", "Routing:".bold(), config.nginx.routing);
     println!("  {} {}", "Port:".bold(), config.server.port);
     println!(
         "  {} {}",
         "Services:".bold(),
-        config.services.keys().cloned().collect::<Vec<_>>().join(", ")
+        config
+            .services
+            .keys()
+            .cloned()
+            .collect::<Vec<_>>()
+            .join(", ")
     );
 }
 
 fn write_config(config: &Config) -> Result<()> {
     let toml_content = toml::to_string_pretty(config)?;
-    
+
     // Add a header comment
     let content = format!(
         "# Scratchpad Configuration\n\
          # Generated by 'scratchpad setup'\n\
          # See https://github.com/Krakaw/scratchpad for documentation\n\n\
-         {}", 
+         {}",
         toml_content
     );
-    
+
     fs::write("scratchpad.toml", content)?;
     Ok(())
 }
@@ -538,15 +553,28 @@ async fn create_demo_scratch(config: &Config) -> Result<()> {
 
     // For now, just verify Docker works - the actual scratch creation
     // uses the existing create_scratch function
-    match crate::scratch::create_scratch(config, &docker, "demo", Some("demo".to_string()), None, None).await {
+    match crate::scratch::create_scratch(
+        config,
+        &docker,
+        "demo",
+        Some("demo".to_string()),
+        None,
+        None,
+    )
+    .await
+    {
         Ok(scratch) => {
             pb.finish_and_clear();
             println!("{} Created demo scratch: {}", "✓".green(), scratch.name);
-            
+
             if config.nginx.enabled {
                 let url = match config.nginx.routing {
-                    NginxRouting::Subdomain => format!("http://{}.{}", scratch.name, config.nginx.domain),
-                    NginxRouting::Path => format!("http://{}/{}", config.nginx.domain, scratch.name),
+                    NginxRouting::Subdomain => {
+                        format!("http://{}.{}", scratch.name, config.nginx.domain)
+                    }
+                    NginxRouting::Path => {
+                        format!("http://{}/{}", config.nginx.domain, scratch.name)
+                    }
                 };
                 println!("  {} {}", "URL:".bold(), url.cyan());
             }

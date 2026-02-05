@@ -1,12 +1,12 @@
 //! Concurrent API operation tests  
 //! Tests concurrent HTTP requests and stress scenarios
-//! 
+//!
 //! Run with: cargo test --test concurrent_tests -- --ignored --test-threads=1
 
 use scratchpad::api::run_server;
 use scratchpad::config::Config;
-use std::time::Instant;
 use std::time::Duration;
+use std::time::Instant;
 use tokio::time::sleep;
 
 /// Helper to start server

@@ -48,7 +48,9 @@ mod tests {
         use scratchpad::config::DockerConfig;
         use scratchpad::docker::DockerClient;
 
-        let config = Config::default();
+        let mut config = Config::default();
+        config.nginx.ingress_service = Some("api".to_string());
+        
         let docker_config = DockerConfig {
             socket: "/var/run/docker.sock".to_string(),
             network: "scratchpad-network".to_string(),

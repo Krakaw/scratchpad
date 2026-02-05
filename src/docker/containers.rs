@@ -43,14 +43,23 @@ impl From<ContainerSummary> for ContainerStatus {
 
 impl DockerClient {
     /// List all containers with the scratchpad label
-    pub async fn list_scratch_containers(&self, scratch_name: Option<&str>) -> Result<Vec<ContainerStatus>> {
+    pub async fn list_scratch_containers(
+        &self,
+        scratch_name: Option<&str>,
+    ) -> Result<Vec<ContainerStatus>> {
         let label_prefix = &self.config().label_prefix;
         let mut filters: HashMap<String, Vec<String>> = HashMap::new();
 
         if let Some(name) = scratch_name {
-            filters.insert("label".to_string(), vec![format!("{}.scratch={}", label_prefix, name)]);
+            filters.insert(
+                "label".to_string(),
+                vec![format!("{}.scratch={}", label_prefix, name)],
+            );
         } else {
-            filters.insert("label".to_string(), vec![format!("{}.scratch", label_prefix)]);
+            filters.insert(
+                "label".to_string(),
+                vec![format!("{}.scratch", label_prefix)],
+            );
         }
 
         let options = ListContainersOptions {
@@ -67,7 +76,10 @@ impl DockerClient {
     pub async fn list_shared_service_containers(&self) -> Result<Vec<ContainerStatus>> {
         let label_prefix = &self.config().label_prefix;
         let mut filters: HashMap<String, Vec<String>> = HashMap::new();
-        filters.insert("label".to_string(), vec![format!("{}.shared-service", label_prefix)]);
+        filters.insert(
+            "label".to_string(),
+            vec![format!("{}.shared-service", label_prefix)],
+        );
 
         let options = ListContainersOptions {
             all: true,
@@ -80,6 +92,7 @@ impl DockerClient {
     }
 
     /// Create and start a container
+    #[allow(clippy::too_many_arguments)]
     pub async fn create_container(
         &self,
         name: &str,
@@ -97,7 +110,10 @@ impl DockerClient {
         // Port bindings
         let mut port_bindings: HashMap<String, Option<Vec<PortBinding>>> = HashMap::new();
         // Build port keys for exposed_ports
-        let port_keys: Vec<String> = ports.iter().map(|(_, container_port)| format!("{}/tcp", container_port)).collect();
+        let port_keys: Vec<String> = ports
+            .iter()
+            .map(|(_, container_port)| format!("{}/tcp", container_port))
+            .collect();
 
         for (host_port, container_port) in &ports {
             let key = format!("{}/tcp", container_port);
@@ -141,7 +157,12 @@ impl DockerClient {
         let config = Config {
             image: Some(image),
             env: Some(env.iter().map(|s| s.as_str()).collect()),
-            labels: Some(labels.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect()),
+            labels: Some(
+                labels
+                    .iter()
+                    .map(|(k, v)| (k.as_str(), v.as_str()))
+                    .collect(),
+            ),
             exposed_ports: Some(exposed_ports),
             host_config: Some(host_config),
             healthcheck,

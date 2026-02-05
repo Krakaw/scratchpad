@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 /// Main configuration structure
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Config {
     #[serde(default)]
     pub server: ServerConfig,
@@ -24,19 +24,6 @@ pub struct Config {
 
     #[serde(default)]
     pub scratch: ScratchDefaults,
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            server: ServerConfig::default(),
-            docker: DockerConfig::default(),
-            nginx: NginxConfig::default(),
-            github: None,
-            services: HashMap::new(),
-            scratch: ScratchDefaults::default(),
-        }
-    }
 }
 
 /// Server configuration for the HTTP API

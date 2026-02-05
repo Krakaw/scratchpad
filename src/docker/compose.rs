@@ -142,6 +142,7 @@ pub struct ComposeVolume {
 
 impl ComposeFile {
     /// Load a compose file from disk
+    #[allow(dead_code)]
     pub fn load(path: &Path) -> Result<Self> {
         let content = std::fs::read_to_string(path)?;
         let compose: ComposeFile = serde_yaml::from_str(&content)?;

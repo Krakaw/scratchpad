@@ -1,8 +1,6 @@
 //! Authentication and authorization tests
 
-use scratchpad::auth::{
-    create_token, validate_token, Claims, User, UserRole, SessionManager,
-};
+use scratchpad::auth::{create_token, validate_token, Claims, SessionManager, User, UserRole};
 
 #[test]
 fn test_create_admin_user() {

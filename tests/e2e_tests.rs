@@ -1,6 +1,6 @@
 //! End-to-end integration tests
 //! Tests complete workflows combining multiple components
-//! 
+//!
 //! Run with: cargo test --test e2e_tests -- --test-threads=1 --nocapture
 //! (Use single thread to avoid Docker port/name conflicts)
 
@@ -64,8 +64,14 @@ async fn test_e2e_scratch_creation_with_services() {
             // 2. Verify directory structure
             let scratch_dir = config.server.releases_dir.join(test_name);
             assert!(scratch_dir.exists(), "Scratch directory should exist");
-            assert!(scratch_dir.join(".scratchpad.toml").exists(), "Config should exist");
-            assert!(scratch_dir.join("compose.yml").exists(), "Compose file should exist");
+            assert!(
+                scratch_dir.join(".scratchpad.toml").exists(),
+                "Config should exist"
+            );
+            assert!(
+                scratch_dir.join("compose.yml").exists(),
+                "Compose file should exist"
+            );
             assert!(scratch_dir.join("logs").exists(), "Logs dir should exist");
             assert!(scratch_dir.join("data").exists(), "Data dir should exist");
             println!("✓ Step 2: Directory structure verified");
@@ -113,10 +119,7 @@ async fn test_e2e_scratch_creation_with_services() {
             match scratch::delete_scratch(&config, &docker, test_name, false).await {
                 Ok(()) => {
                     println!("✓ Step 7: Deleted scratch");
-                    assert!(
-                        !scratch_dir.exists(),
-                        "Scratch directory should be removed"
-                    );
+                    assert!(!scratch_dir.exists(), "Scratch directory should be removed");
                 }
                 Err(e) => panic!("Failed to delete: {}", e),
             }
@@ -169,10 +172,7 @@ async fn test_e2e_multiple_scratches() {
                     name
                 );
             }
-            println!(
-                "✓ All {} scratches found in list",
-                names.len()
-            );
+            println!("✓ All {} scratches found in list", names.len());
         }
         Err(e) => panic!("Failed to list scratches: {}", e),
     }
