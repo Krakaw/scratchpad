@@ -50,7 +50,7 @@ regex = "1"
 uuid = { version = "1", features = ["v4", "serde"] }
 
 # Authentication & Session
-jsonwebtoken = "10"
+jsonwebtoken = { version = "10", features = ["rust_crypto"] }
 bcrypt = "0.15"
 rand = "0.8"
 
