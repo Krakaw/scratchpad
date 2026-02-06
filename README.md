@@ -18,8 +18,23 @@ The original Scratchpad used bash scripts, Node.js Express, and React with high 
 
 ### Installation
 
+**One-liner install (recommended):**
+
 ```bash
-# Build from source
+curl -fsSL https://raw.githubusercontent.com/Krakaw/scratchpad/main/install.sh | bash
+```
+
+**Using cargo:**
+
+```bash
+cargo install --git https://github.com/Krakaw/scratchpad
+```
+
+**Build from source:**
+
+```bash
+git clone https://github.com/Krakaw/scratchpad.git
+cd scratchpad
 cargo build --release
 ./target/release/scratchpad --version
 ```
