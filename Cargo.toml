@@ -19,7 +19,7 @@ axum = { version = "0.7", features = ["macros", "ws"] }
 tower-http = { version = "0.5", features = ["fs", "cors", "trace"] }
 
 # Docker
-bollard = "0.16"
+bollard = "0.20"
 
 # Config
 serde = { version = "1", features = ["derive"] }
