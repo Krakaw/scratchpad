@@ -21,7 +21,7 @@ pub async fn reload(config: &Config, docker: &DockerClient) -> Result<()> {
     }
 
     // Try to find an nginx container
-    let containers = docker.inner().list_containers::<String>(None).await?;
+    let containers = docker.inner().list_containers(None).await?;
 
     for container in containers {
         let name = container

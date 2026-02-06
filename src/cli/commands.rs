@@ -214,10 +214,10 @@ pub async fn logs(name: &str, service: Option<String>, follow: bool, tail: usize
 
         if follow {
             // Streaming logs - this will block
-            use bollard::container::LogsOptions;
+            use bollard::query_parameters::LogsOptions;
             use futures_util::StreamExt;
 
-            let options = LogsOptions::<String> {
+            let options = LogsOptions {
                 follow: true,
                 stdout: true,
                 stderr: true,
@@ -598,7 +598,7 @@ pub async fn doctor() -> Result<()> {
                     success("Docker connection successful");
 
                     // Try to list containers
-                    match docker.inner().list_containers::<&str>(None).await {
+                    match docker.inner().list_containers(None).await {
                         Ok(containers) => {
                             success(&format!(
                                 "Docker API working ({} containers found)",

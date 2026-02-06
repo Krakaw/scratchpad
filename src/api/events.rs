@@ -28,7 +28,7 @@ pub fn start_event_streaming(hub: Arc<WsBroadcastHub>, docker: Arc<DockerClient>
 
 /// Stream Docker events and broadcast them to connected clients
 async fn stream_docker_events(hub: Arc<WsBroadcastHub>, docker: Arc<DockerClient>) -> Result<()> {
-    use bollard::container::ListContainersOptions;
+    use bollard::query_parameters::ListContainersOptions;
 
     debug!("Starting Docker event stream");
 
@@ -36,7 +36,7 @@ async fn stream_docker_events(hub: Arc<WsBroadcastHub>, docker: Arc<DockerClient
         // Get current containers
         let containers = docker
             .inner()
-            .list_containers::<String>(Some(ListContainersOptions {
+            .list_containers(Some(ListContainersOptions {
                 all: true,
                 ..Default::default()
             }))

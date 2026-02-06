@@ -1,10 +1,11 @@
 //! Container management operations
 
-use bollard::container::{
-    Config, CreateContainerOptions, ListContainersOptions, LogOutput, LogsOptions,
+use bollard::container::LogOutput;
+use bollard::models::{ContainerCreateBody, ContainerSummary, HostConfig, PortBinding};
+use bollard::query_parameters::{
+    CreateContainerOptions, CreateImageOptions, ListContainersOptions, LogsOptions,
     RemoveContainerOptions, StartContainerOptions, StopContainerOptions,
 };
-use bollard::models::{ContainerSummary, HostConfig, PortBinding};
 use futures_util::StreamExt;
 use std::collections::HashMap;
 use tokio::io::AsyncWriteExt;
@@ -34,7 +35,7 @@ impl From<ContainerSummary> for ContainerStatus {
                 .trim_start_matches('/')
                 .to_string(),
             image: container.image.unwrap_or_default(),
-            state: container.state.unwrap_or_default(),
+            state: container.state.map(|s| s.to_string()).unwrap_or_default(),
             status: container.status.unwrap_or_default(),
             labels: container.labels.unwrap_or_default(),
         }
@@ -64,7 +65,7 @@ impl DockerClient {
 
         let options = ListContainersOptions {
             all: true,
-            filters,
+            filters: Some(filters),
             ..Default::default()
         };
 
@@ -83,7 +84,7 @@ impl DockerClient {
 
         let options = ListContainersOptions {
             all: true,
-            filters,
+            filters: Some(filters),
             ..Default::default()
         };
 
@@ -126,11 +127,8 @@ impl DockerClient {
             );
         }
 
-        // Build exposed_ports with &str keys (pointing to port_keys)
-        let exposed_ports: HashMap<&str, HashMap<(), ()>> = port_keys
-            .iter()
-            .map(|k| (k.as_str(), HashMap::new()))
-            .collect();
+        // Build exposed_ports as Vec<String>
+        let exposed_ports: Vec<String> = port_keys.clone();
 
         // Host config
         let host_config = HostConfig {
@@ -154,15 +152,10 @@ impl DockerClient {
             start_interval: None,
         });
 
-        let config = Config {
-            image: Some(image),
-            env: Some(env.iter().map(|s| s.as_str()).collect()),
-            labels: Some(
-                labels
-                    .iter()
-                    .map(|(k, v)| (k.as_str(), v.as_str()))
-                    .collect(),
-            ),
+        let config = ContainerCreateBody {
+            image: Some(image.to_string()),
+            env: Some(env),
+            labels: Some(labels),
             exposed_ports: Some(exposed_ports),
             host_config: Some(host_config),
             healthcheck,
@@ -170,15 +163,15 @@ impl DockerClient {
         };
 
         let options = CreateContainerOptions {
-            name,
-            platform: None,
+            name: Some(name.to_string()),
+            platform: String::new(),
         };
 
         let response = self.inner().create_container(Some(options), config).await?;
 
         // Start the container
         self.inner()
-            .start_container(&response.id, None::<StartContainerOptions<String>>)
+            .start_container(&response.id, None::<StartContainerOptions>)
             .await?;
 
         Ok(response.id)
@@ -186,8 +179,6 @@ impl DockerClient {
 
     /// Pull an image if it doesn't exist locally
     pub async fn pull_image_if_missing(&self, image: &str) -> Result<()> {
-        use bollard::image::CreateImageOptions;
-
         // Check if image exists
         if self.inner().inspect_image(image).await.is_ok() {
             return Ok(());
@@ -196,7 +187,7 @@ impl DockerClient {
         tracing::info!("Pulling image: {}", image);
 
         let options = CreateImageOptions {
-            from_image: image,
+            from_image: Some(image.to_string()),
             ..Default::default()
         };
 
@@ -212,7 +203,10 @@ impl DockerClient {
 
     /// Stop a container
     pub async fn stop_container(&self, id: &str) -> Result<()> {
-        let options = StopContainerOptions { t: 10 };
+        let options = StopContainerOptions {
+            t: Some(10),
+            signal: Some("SIGTERM".to_string()),
+        };
         self.inner().stop_container(id, Some(options)).await?;
         Ok(())
     }
@@ -220,7 +214,7 @@ impl DockerClient {
     /// Start a stopped container
     pub async fn start_container(&self, id: &str) -> Result<()> {
         self.inner()
-            .start_container(id, None::<StartContainerOptions<String>>)
+            .start_container(id, None::<StartContainerOptions>)
             .await?;
         Ok(())
     }
@@ -242,7 +236,7 @@ impl DockerClient {
         container_id: &str,
         log_path: &std::path::Path,
     ) -> Result<()> {
-        let options = LogsOptions::<String> {
+        let options = LogsOptions {
             follow: true,
             stdout: true,
             stderr: true,
@@ -282,7 +276,7 @@ impl DockerClient {
 
     /// Get logs from a container (non-streaming)
     pub async fn get_logs(&self, container_id: &str, tail: usize) -> Result<Vec<String>> {
-        let options = LogsOptions::<String> {
+        let options = LogsOptions {
             follow: false,
             stdout: true,
             stderr: true,
