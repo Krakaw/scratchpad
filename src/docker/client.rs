@@ -20,17 +20,15 @@ impl DockerClient {
     /// Create a new Docker client
     pub fn new(config: DockerConfig) -> Result<Self> {
         tracing::debug!("Attempting to connect to Docker");
-        
+
         // Try to get socket from environment first
         let socket_path = std::env::var("DOCKER_HOST")
             .ok()
             .map(|h| {
                 // DOCKER_HOST might be in format unix:///path/to/socket or tcp://host:port
-                if h.starts_with("unix://") {
-                    h[7..].to_string()
-                } else {
-                    h
-                }
+                h.strip_prefix("unix://")
+                    .map(|s| s.to_string())
+                    .unwrap_or(h)
             })
             .unwrap_or_else(|| config.socket.clone());
 
@@ -116,7 +114,7 @@ impl DockerClient {
                 Ok(Arc::new(client))
             })
             .await
-            .map(|c| c.clone())
+            .cloned()
     }
 
     /// Get the underlying bollard Docker client

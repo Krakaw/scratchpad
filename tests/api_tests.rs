@@ -1,6 +1,6 @@
 //! HTTP API integration tests
 //! Tests the REST API endpoints
-//! 
+//!
 //! Run with: cargo test --test api_tests -- --test-threads=1 --nocapture
 //! (Use single thread to avoid port conflicts)
 

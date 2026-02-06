@@ -1,6 +1,6 @@
 //! Services provisioning integration tests
 //! Tests shared service creation and management
-//! 
+//!
 //! Run with: cargo test --test services_tests -- --test-threads=1 --nocapture
 //! Note: Requires Docker and may require PostgreSQL connection credentials
 
@@ -93,7 +93,10 @@ async fn test_postgres_database_creation() {
             println!("✓ Successfully created PostgreSQL database: {}", db_name);
         }
         Err(e) => {
-            println!("⚠ Could not create database (may require running PostgreSQL): {}", e);
+            println!(
+                "⚠ Could not create database (may require running PostgreSQL): {}",
+                e
+            );
         }
     }
 }

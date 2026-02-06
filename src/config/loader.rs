@@ -17,6 +17,7 @@ pub fn load_config() -> Result<Config> {
 }
 
 /// Get the path to the configuration file
+#[allow(dead_code)]
 pub fn get_config_path() -> Result<PathBuf> {
     find_config_file()
 }

@@ -1,12 +1,8 @@
 //! Authentication middleware and extractors
 
-use crate::auth::{Claims, validate_token};
+use crate::auth::{validate_token, Claims};
 use crate::error::{Error, Result};
-use axum::{
-    extract::Request,
-    middleware::Next,
-    response::Response,
-};
+use axum::{extract::Request, middleware::Next, response::Response};
 
 /// Extract user claims from request
 pub fn extract_user_from_request(req: &Request) -> Result<Claims> {
@@ -30,7 +26,9 @@ pub fn extract_user_from_request(req: &Request) -> Result<Claims> {
         }
     }
 
-    Err(Error::Config("No valid authentication token found".to_string()))
+    Err(Error::Config(
+        "No valid authentication token found".to_string(),
+    ))
 }
 
 /// Middleware for requiring authentication
@@ -51,7 +49,7 @@ mod tests {
     #[test]
     fn test_extract_user_no_token() {
         use axum::http::Request;
-        
+
         let req = Request::builder()
             .method("GET")
             .uri("/")
@@ -62,4 +60,3 @@ mod tests {
         assert!(result.is_err());
     }
 }
-

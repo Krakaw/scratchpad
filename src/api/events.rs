@@ -27,10 +27,7 @@ pub fn start_event_streaming(hub: Arc<WsBroadcastHub>, docker: Arc<DockerClient>
 }
 
 /// Stream Docker events and broadcast them to connected clients
-async fn stream_docker_events(
-    hub: Arc<WsBroadcastHub>,
-    docker: Arc<DockerClient>,
-) -> Result<()> {
+async fn stream_docker_events(hub: Arc<WsBroadcastHub>, docker: Arc<DockerClient>) -> Result<()> {
     use bollard::container::ListContainersOptions;
 
     debug!("Starting Docker event stream");
@@ -133,11 +130,11 @@ mod tests {
             extract_scratch_name("scratchpad-my-feature-api"),
             Some("my-feature")
         );
+        assert_eq!(extract_scratch_name("scratchpad-test-db"), Some("test"));
         assert_eq!(
-            extract_scratch_name("scratchpad-test-db"),
-            Some("test")
+            extract_scratch_name("custom-container"),
+            Some("custom-container")
         );
-        assert_eq!(extract_scratch_name("custom-container"), Some("custom-container"));
         assert_eq!(extract_scratch_name(""), None);
     }
 

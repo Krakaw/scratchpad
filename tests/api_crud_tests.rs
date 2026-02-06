@@ -1,6 +1,6 @@
 //! Complete API CRUD operation tests
 //! Tests all API endpoints with realistic payloads
-//! 
+//!
 //! Run with: cargo test --test api_crud_tests -- --test-threads=1 --nocapture
 //! (Single thread to avoid port conflicts)
 
@@ -65,7 +65,10 @@ async fn test_api_create_scratch_minimal() {
         .await
     {
         Ok(response) => {
-            println!("✓ Create scratch endpoint responded with status: {}", response.status());
+            println!(
+                "✓ Create scratch endpoint responded with status: {}",
+                response.status()
+            );
 
             if let Ok(body) = response.text().await {
                 println!("  Response: {}", body);
@@ -106,7 +109,10 @@ async fn test_api_create_scratch_full() {
         .await
     {
         Ok(response) => {
-            println!("✓ Create scratch with all fields responded: {}", response.status());
+            println!(
+                "✓ Create scratch with all fields responded: {}",
+                response.status()
+            );
         }
         Err(e) => println!("⚠ Create scratch failed: {}", e),
     }
@@ -130,12 +136,18 @@ async fn test_api_get_scratch() {
 
     // Get a scratch (will fail if not exists, but tests endpoint)
     match client
-        .get(&format!("http://127.0.0.1:{}/api/scratches/test-scratch", port))
+        .get(&format!(
+            "http://127.0.0.1:{}/api/scratches/test-scratch",
+            port
+        ))
         .send()
         .await
     {
         Ok(response) => {
-            println!("✓ Get scratch endpoint responded with status: {}", response.status());
+            println!(
+                "✓ Get scratch endpoint responded with status: {}",
+                response.status()
+            );
 
             if let Ok(body) = response.text().await {
                 println!("  Response: {}", body);
@@ -163,12 +175,18 @@ async fn test_api_delete_scratch() {
 
     // Delete a scratch
     match client
-        .delete(&format!("http://127.0.0.1:{}/api/scratches/test-scratch", port))
+        .delete(&format!(
+            "http://127.0.0.1:{}/api/scratches/test-scratch",
+            port
+        ))
         .send()
         .await
     {
         Ok(response) => {
-            println!("✓ Delete scratch endpoint responded with status: {}", response.status());
+            println!(
+                "✓ Delete scratch endpoint responded with status: {}",
+                response.status()
+            );
         }
         Err(e) => println!("⚠ Delete scratch failed: {}", e),
     }
@@ -192,12 +210,18 @@ async fn test_api_start_scratch() {
 
     // Start a scratch
     match client
-        .post(&format!("http://127.0.0.1:{}/api/scratches/test-scratch/start", port))
+        .post(&format!(
+            "http://127.0.0.1:{}/api/scratches/test-scratch/start",
+            port
+        ))
         .send()
         .await
     {
         Ok(response) => {
-            println!("✓ Start scratch endpoint responded with status: {}", response.status());
+            println!(
+                "✓ Start scratch endpoint responded with status: {}",
+                response.status()
+            );
         }
         Err(e) => println!("⚠ Start scratch failed: {}", e),
     }
@@ -221,12 +245,18 @@ async fn test_api_stop_scratch() {
 
     // Stop a scratch
     match client
-        .post(&format!("http://127.0.0.1:{}/api/scratches/test-scratch/stop", port))
+        .post(&format!(
+            "http://127.0.0.1:{}/api/scratches/test-scratch/stop",
+            port
+        ))
         .send()
         .await
     {
         Ok(response) => {
-            println!("✓ Stop scratch endpoint responded with status: {}", response.status());
+            println!(
+                "✓ Stop scratch endpoint responded with status: {}",
+                response.status()
+            );
         }
         Err(e) => println!("⚠ Stop scratch failed: {}", e),
     }
@@ -250,12 +280,18 @@ async fn test_api_restart_scratch() {
 
     // Restart a scratch
     match client
-        .post(&format!("http://127.0.0.1:{}/api/scratches/test-scratch/restart", port))
+        .post(&format!(
+            "http://127.0.0.1:{}/api/scratches/test-scratch/restart",
+            port
+        ))
         .send()
         .await
     {
         Ok(response) => {
-            println!("✓ Restart scratch endpoint responded with status: {}", response.status());
+            println!(
+                "✓ Restart scratch endpoint responded with status: {}",
+                response.status()
+            );
         }
         Err(e) => println!("⚠ Restart scratch failed: {}", e),
     }
@@ -279,12 +315,18 @@ async fn test_api_get_logs() {
 
     // Get logs without parameters
     match client
-        .get(&format!("http://127.0.0.1:{}/api/scratches/test-scratch/logs", port))
+        .get(&format!(
+            "http://127.0.0.1:{}/api/scratches/test-scratch/logs",
+            port
+        ))
         .send()
         .await
     {
         Ok(response) => {
-            println!("✓ Get logs endpoint responded with status: {}", response.status());
+            println!(
+                "✓ Get logs endpoint responded with status: {}",
+                response.status()
+            );
         }
         Err(e) => println!("⚠ Get logs failed: {}", e),
     }
@@ -316,7 +358,10 @@ async fn test_api_get_logs_with_service() {
         .await
     {
         Ok(response) => {
-            println!("✓ Get logs with service filter responded: {}", response.status());
+            println!(
+                "✓ Get logs with service filter responded: {}",
+                response.status()
+            );
         }
         Err(e) => println!("⚠ Get logs with service failed: {}", e),
     }
@@ -348,7 +393,10 @@ async fn test_api_get_logs_with_tail() {
         .await
     {
         Ok(response) => {
-            println!("✓ Get logs with tail parameter responded: {}", response.status());
+            println!(
+                "✓ Get logs with tail parameter responded: {}",
+                response.status()
+            );
         }
         Err(e) => println!("⚠ Get logs with tail failed: {}", e),
     }
@@ -377,7 +425,10 @@ async fn test_api_start_services() {
         .await
     {
         Ok(response) => {
-            println!("✓ Start services endpoint responded with status: {}", response.status());
+            println!(
+                "✓ Start services endpoint responded with status: {}",
+                response.status()
+            );
         }
         Err(e) => println!("⚠ Start services failed: {}", e),
     }
@@ -406,7 +457,10 @@ async fn test_api_stop_services() {
         .await
     {
         Ok(response) => {
-            println!("✓ Stop services endpoint responded with status: {}", response.status());
+            println!(
+                "✓ Stop services endpoint responded with status: {}",
+                response.status()
+            );
         }
         Err(e) => println!("⚠ Stop services failed: {}", e),
     }
@@ -434,15 +488,16 @@ async fn test_api_response_format() {
         .send()
         .await
     {
-        Ok(response) => {
-            match response.json::<serde_json::Value>().await {
-                Ok(json) => {
-                    assert!(json.get("success").is_some(), "Response should have success field");
-                    println!("✓ API response format is correct");
-                }
-                Err(e) => println!("⚠ Could not parse response JSON: {}", e),
+        Ok(response) => match response.json::<serde_json::Value>().await {
+            Ok(json) => {
+                assert!(
+                    json.get("success").is_some(),
+                    "Response should have success field"
+                );
+                println!("✓ API response format is correct");
             }
-        }
+            Err(e) => println!("⚠ Could not parse response JSON: {}", e),
+        },
         Err(e) => println!("⚠ Request failed: {}", e),
     }
 
@@ -500,12 +555,16 @@ async fn test_api_concurrent_requests() {
     for i in 0..5 {
         let port_num = port.clone();
         let client = client.clone();
-        
+
         let handle = tokio::spawn(async move {
             let url = format!("http://127.0.0.1:{}/api/health", port_num);
             match client.get(&url).send().await {
                 Ok(response) => {
-                    println!("✓ Concurrent request {} succeeded: {}", i, response.status());
+                    println!(
+                        "✓ Concurrent request {} succeeded: {}",
+                        i,
+                        response.status()
+                    );
                 }
                 Err(e) => println!("⚠ Concurrent request {} failed: {}", i, e),
             }
@@ -545,7 +604,10 @@ async fn test_api_invalid_payload() {
         .await
     {
         Ok(response) => {
-            println!("✓ Invalid payload handled with status: {}", response.status());
+            println!(
+                "✓ Invalid payload handled with status: {}",
+                response.status()
+            );
         }
         Err(e) => println!("⚠ Request failed: {}", e),
     }
@@ -574,7 +636,10 @@ async fn test_api_method_not_allowed() {
         .await
     {
         Ok(response) => {
-            println!("✓ Wrong HTTP method handled with status: {}", response.status());
+            println!(
+                "✓ Wrong HTTP method handled with status: {}",
+                response.status()
+            );
         }
         Err(e) => println!("⚠ Request failed: {}", e),
     }

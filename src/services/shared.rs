@@ -28,9 +28,7 @@ pub async fn ensure_shared_service_running(
 
     // Check if container already exists
     let containers = docker.list_shared_service_containers().await?;
-    let existing = containers
-        .iter()
-        .find(|c| c.name == container_name);
+    let existing = containers.iter().find(|c| c.name == container_name);
 
     if let Some(container) = existing {
         if container.state == "running" {
@@ -85,12 +83,18 @@ pub async fn ensure_shared_service_running(
     };
 
     let mut volumes = service_config.volumes.clone();
-    
+
     // Special handling for nginx - mount the generated config
     if service_name == "nginx" && config.nginx.enabled {
-        let config_path = config.nginx.config_path.canonicalize()
+        let config_path = config
+            .nginx
+            .config_path
+            .canonicalize()
             .unwrap_or_else(|_| config.nginx.config_path.clone());
-        let config_mount = format!("{}:/etc/nginx/conf.d/scratches.conf:ro", config_path.display());
+        let config_mount = format!(
+            "{}:/etc/nginx/conf.d/scratches.conf:ro",
+            config_path.display()
+        );
         volumes.push(config_mount);
     }
 
@@ -118,12 +122,19 @@ pub async fn ensure_shared_service_running(
 }
 
 /// Wait for a container to become healthy
-async fn wait_for_healthy(docker: &DockerClient, container_name: &str, timeout_secs: u32) -> Result<()> {
+async fn wait_for_healthy(
+    docker: &DockerClient,
+    container_name: &str,
+    timeout_secs: u32,
+) -> Result<()> {
     use tokio::time::{sleep, Duration};
 
     for _ in 0..timeout_secs {
-        let info = docker.inner().inspect_container(container_name, None).await?;
-        
+        let info = docker
+            .inner()
+            .inspect_container(container_name, None)
+            .await?;
+
         if let Some(state) = info.state {
             if let Some(health) = state.health {
                 if health.status == Some(bollard::models::HealthStatusEnum::HEALTHY) {
@@ -173,14 +184,15 @@ pub async fn start_shared_services(config: &Config, docker: &DockerClient) -> Re
 }
 
 /// Get status of all shared services
-pub async fn get_shared_services_status(
-    docker: &DockerClient,
-) -> Result<HashMap<String, String>> {
+pub async fn get_shared_services_status(docker: &DockerClient) -> Result<HashMap<String, String>> {
     let containers = docker.list_shared_service_containers().await?;
     let mut status = HashMap::new();
 
     for container in containers {
-        let service_name = container.name.strip_prefix("scratchpad-").unwrap_or(&container.name);
+        let service_name = container
+            .name
+            .strip_prefix("scratchpad-")
+            .unwrap_or(&container.name);
         status.insert(service_name.to_string(), container.state);
     }
 
@@ -201,13 +213,10 @@ pub async fn start_service(
 }
 
 /// Stop a specific shared service
-pub async fn stop_service(
-    docker: &DockerClient,
-    service_name: &str,
-) -> Result<()> {
+pub async fn stop_service(docker: &DockerClient, service_name: &str) -> Result<()> {
     let container_name = format!("scratchpad-{}", service_name);
     let containers = docker.list_shared_service_containers().await?;
-    
+
     let container = containers
         .iter()
         .find(|c| c.name == container_name)
@@ -229,11 +238,13 @@ pub async fn clean_shared_services(docker: &DockerClient) -> Result<Vec<String>>
         if container.state == "running" {
             docker.stop_container(&container.id).await?;
         }
-        
+
         // Remove container
         docker.remove_container(&container.id, false).await?;
-        
-        let service_name = container.name.strip_prefix("scratchpad-")
+
+        let service_name = container
+            .name
+            .strip_prefix("scratchpad-")
             .unwrap_or(&container.name)
             .to_string();
         removed.push(service_name);
@@ -241,4 +252,3 @@ pub async fn clean_shared_services(docker: &DockerClient) -> Result<Vec<String>>
 
     Ok(removed)
 }
-

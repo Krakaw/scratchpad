@@ -1,6 +1,6 @@
 //! Integration tests for scratch lifecycle operations
 //! Tests the full create, start, stop, delete flow
-//! 
+//!
 //! Run with: cargo test --test scratch_operations_tests -- --test-threads=1
 //! (Use single thread to avoid Docker port conflicts)
 
@@ -62,7 +62,10 @@ async fn test_create_scratch() {
             // Verify directory exists
             let scratch_dir = config.server.releases_dir.join(test_name);
             assert!(scratch_dir.exists(), "Scratch directory should exist");
-            assert!(scratch_dir.join(".scratchpad.toml").exists(), "Config file should exist");
+            assert!(
+                scratch_dir.join(".scratchpad.toml").exists(),
+                "Config file should exist"
+            );
             println!("✓ Scratch directory and config file created");
 
             cleanup_scratches(&config, &[test_name]);
@@ -299,10 +302,7 @@ async fn test_delete_scratch() {
     }
 
     // Verify it's gone
-    assert!(
-        !scratch_dir.exists(),
-        "Scratch directory should be deleted"
-    );
+    assert!(!scratch_dir.exists(), "Scratch directory should be deleted");
     println!("✓ Scratch directory removed successfully");
 }
 

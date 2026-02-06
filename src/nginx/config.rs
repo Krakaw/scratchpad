@@ -162,28 +162,32 @@ pub async fn regenerate_config(config: &Config, docker: &DockerClient) -> Result
     use minijinja::{context, Environment};
 
     // Get ingress service name - required for nginx to work
-    let ingress_service = config.nginx.ingress_service.clone()
-        .ok_or_else(|| Error::Config(
-            "nginx.ingress_service must be set to specify which service handles incoming requests".to_string()
-        ))?;
-    
+    let ingress_service = config.nginx.ingress_service.clone().ok_or_else(|| {
+        Error::Config(
+            "nginx.ingress_service must be set to specify which service handles incoming requests"
+                .to_string(),
+        )
+    })?;
+
     // Get the port from the ingress service config
-    let upstream_port = config.services.get(&ingress_service)
+    let upstream_port = config
+        .services
+        .get(&ingress_service)
         .and_then(|svc| svc.internal_port.or(svc.port))
         .unwrap_or(3000);
 
     let mut env = Environment::new();
-    
+
     // Use dynamic config by default, static if explicitly requested
     let use_dynamic = config.nginx.dynamic.unwrap_or(true);
-    
+
     let rendered = if use_dynamic {
         env.add_template("nginx", NGINX_DYNAMIC_TEMPLATE)?;
         let template = env.get_template("nginx")?;
-        
+
         // Escape dots in domain for regex
         let domain_escaped = config.nginx.domain.replace('.', r"\.");
-        
+
         template.render(context! {
             domain => config.nginx.domain,
             domain_escaped => domain_escaped,
@@ -197,10 +201,10 @@ pub async fn regenerate_config(config: &Config, docker: &DockerClient) -> Result
     } else {
         // Static config - needs scratch list
         let scratches = scratch::list_scratches(config, docker).await?;
-        
+
         env.add_template("nginx", NGINX_STATIC_TEMPLATE)?;
         let template = env.get_template("nginx")?;
-        
+
         template.render(context! {
             scratches => scratches,
             domain => config.nginx.domain,

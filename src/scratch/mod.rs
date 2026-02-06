@@ -80,8 +80,14 @@ mod tests {
 
     #[test]
     fn test_sanitize_name() {
-        assert_eq!(Scratch::sanitize_name("feature/my-branch"), "feature-my-branch");
-        assert_eq!(Scratch::sanitize_name("Feature/MY_Branch"), "feature-my_branch");
+        assert_eq!(
+            Scratch::sanitize_name("feature/my-branch"),
+            "feature-my-branch"
+        );
+        assert_eq!(
+            Scratch::sanitize_name("Feature/MY_Branch"),
+            "feature-my_branch"
+        );
         assert_eq!(Scratch::sanitize_name("--test--"), "test");
         assert_eq!(Scratch::sanitize_name("hello world!"), "hello-world");
     }

@@ -690,16 +690,30 @@ pub async fn scratch_detail(
         scratch_status.name,
         scratch_status.name,
         scratch_status.branch,
-        if scratch_status.status == "running" { "text-green-500" } else { "text-red-500" },
+        if scratch_status.status == "running" {
+            "text-green-500"
+        } else {
+            "text-red-500"
+        },
         scratch_status.status,
         if scratch_status.status == "running" {
-            format!(r#"<button class="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 rounded" hx-post="/api/scratches/{}/stop">Stop</button>"#, scratch_status.name)
+            format!(
+                r#"<button class="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 rounded" hx-post="/api/scratches/{}/stop">Stop</button>"#,
+                scratch_status.name
+            )
         } else {
-            format!(r#"<button class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded" hx-post="/api/scratches/{}/start">Start</button>"#, scratch_status.name)
+            format!(
+                r#"<button class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded" hx-post="/api/scratches/{}/start">Start</button>"#,
+                scratch_status.name
+            )
         },
         scratch_status.name,
         services_html,
-        if databases_html.is_empty() { "<li class=\"text-gray-500\">No databases</li>".to_string() } else { databases_html },
+        if databases_html.is_empty() {
+            "<li class=\"text-gray-500\">No databases</li>".to_string()
+        } else {
+            databases_html
+        },
         scratch_status.url.as_deref().unwrap_or("#"),
         scratch_status.url.as_deref().unwrap_or("-"),
         scratch_status.name,
@@ -1255,10 +1269,10 @@ pub async fn config_editor() -> Html<String> {
 /// Service management page
 pub async fn service_manager(State(state): State<SharedState>) -> Html<String> {
     let state = state.read().await;
-    
+
     // Get list of configured services
     let services_list: Vec<String> = state.config.services.keys().cloned().collect();
-    
+
     let services_html: String = services_list
         .iter()
         .map(|service_name| {

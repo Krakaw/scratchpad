@@ -33,7 +33,12 @@ pub async fn create_postgres_database(config: &Config, db_name: &str) -> Result<
         .connection
         .as_ref()
         .map(|c| c.password.as_str())
-        .or_else(|| postgres_config.env.get("POSTGRES_PASSWORD").map(|s| s.as_str()))
+        .or_else(|| {
+            postgres_config
+                .env
+                .get("POSTGRES_PASSWORD")
+                .map(|s| s.as_str())
+        })
         .unwrap_or("postgres");
 
     let conn_string = format!(
@@ -44,7 +49,7 @@ pub async fn create_postgres_database(config: &Config, db_name: &str) -> Result<
     // Connect to postgres
     let (client, connection) = tokio_postgres::connect(&conn_string, tokio_postgres::NoTls)
         .await
-        .map_err(|e| Error::Database(e))?;
+        .map_err(Error::Database)?;
 
     // Spawn the connection handler
     tokio::spawn(async move {
@@ -67,10 +72,7 @@ pub async fn create_postgres_database(config: &Config, db_name: &str) -> Result<
         // Create database (can't use parameterized query for CREATE DATABASE)
         // Validate db_name to prevent SQL injection
         if !db_name.chars().all(|c| c.is_alphanumeric() || c == '_') {
-            return Err(Error::Config(format!(
-                "Invalid database name: {}",
-                db_name
-            )));
+            return Err(Error::Config(format!("Invalid database name: {}", db_name)));
         }
 
         let query = format!("CREATE DATABASE {}", db_name);
@@ -112,7 +114,12 @@ pub async fn drop_postgres_database(config: &Config, db_name: &str) -> Result<()
         .connection
         .as_ref()
         .map(|c| c.password.as_str())
-        .or_else(|| postgres_config.env.get("POSTGRES_PASSWORD").map(|s| s.as_str()))
+        .or_else(|| {
+            postgres_config
+                .env
+                .get("POSTGRES_PASSWORD")
+                .map(|s| s.as_str())
+        })
         .unwrap_or("postgres");
 
     let conn_string = format!(
@@ -122,7 +129,7 @@ pub async fn drop_postgres_database(config: &Config, db_name: &str) -> Result<()
 
     let (client, connection) = tokio_postgres::connect(&conn_string, tokio_postgres::NoTls)
         .await
-        .map_err(|e| Error::Database(e))?;
+        .map_err(Error::Database)?;
 
     tokio::spawn(async move {
         if let Err(e) = connection.await {
@@ -132,10 +139,7 @@ pub async fn drop_postgres_database(config: &Config, db_name: &str) -> Result<()
 
     // Validate db_name
     if !db_name.chars().all(|c| c.is_alphanumeric() || c == '_') {
-        return Err(Error::Config(format!(
-            "Invalid database name: {}",
-            db_name
-        )));
+        return Err(Error::Config(format!("Invalid database name: {}", db_name)));
     }
 
     // Terminate connections to the database
@@ -154,6 +158,7 @@ pub async fn drop_postgres_database(config: &Config, db_name: &str) -> Result<()
 }
 
 /// List all scratchpad databases
+#[allow(dead_code)]
 pub async fn list_databases(config: &Config) -> Result<Vec<String>> {
     let postgres_config = config
         .get_service("postgres")
@@ -182,7 +187,12 @@ pub async fn list_databases(config: &Config) -> Result<Vec<String>> {
         .connection
         .as_ref()
         .map(|c| c.password.as_str())
-        .or_else(|| postgres_config.env.get("POSTGRES_PASSWORD").map(|s| s.as_str()))
+        .or_else(|| {
+            postgres_config
+                .env
+                .get("POSTGRES_PASSWORD")
+                .map(|s| s.as_str())
+        })
         .unwrap_or("postgres");
 
     let conn_string = format!(
@@ -192,7 +202,7 @@ pub async fn list_databases(config: &Config) -> Result<Vec<String>> {
 
     let (client, connection) = tokio_postgres::connect(&conn_string, tokio_postgres::NoTls)
         .await
-        .map_err(|e| Error::Database(e))?;
+        .map_err(Error::Database)?;
 
     tokio::spawn(async move {
         if let Err(e) = connection.await {

@@ -2,6 +2,7 @@ use anyhow::Result;
 use clap::Parser;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
+pub mod auth;
 mod cli;
 mod config;
 mod docker;
@@ -9,7 +10,6 @@ mod error;
 mod nginx;
 mod scratch;
 mod services;
-pub mod auth;
 
 pub mod api;
 pub mod ui;

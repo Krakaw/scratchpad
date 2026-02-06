@@ -1,10 +1,13 @@
 //! CLI command implementations
 
 use anyhow::Result;
-use std::fs;
 use colored::Colorize;
+use std::fs;
 
-use crate::cli::{error, info, print_scratch_detail, print_scratch_table, success, warn, confirm, NginxAction, OutputFormat, ServicesAction, ConfigAction};
+use crate::cli::{
+    confirm, error, info, print_scratch_detail, print_scratch_table, success, warn, ConfigAction,
+    NginxAction, OutputFormat, ServicesAction,
+};
 use crate::config::{self, Config};
 use crate::docker::DockerClient;
 use crate::nginx;
@@ -208,11 +211,11 @@ pub async fn logs(name: &str, service: Option<String>, follow: bool, tail: usize
 
     for container in containers {
         println!("=== Logs from {} ===", container.name);
-        
+
         if follow {
             // Streaming logs - this will block
-            use futures_util::StreamExt;
             use bollard::container::LogsOptions;
+            use futures_util::StreamExt;
 
             let options = LogsOptions::<String> {
                 follow: true,
@@ -261,7 +264,7 @@ pub async fn status(name: &str) -> Result<()> {
 /// Start the HTTP API server
 pub async fn serve(host: &str, port: u16) -> Result<()> {
     let config = load_config()?;
-    
+
     info(&format!("Starting server at http://{}:{}", host, port));
 
     crate::api::run_server(config, host, port).await?;
@@ -282,12 +285,10 @@ pub async fn nginx(action: NginxAction) -> Result<()> {
             nginx::reload(&config, &docker).await?;
             success("Reloaded nginx");
         }
-        NginxAction::Show => {
-            match nginx::get_config(&config) {
-                Ok(content) => println!("{}", content),
-                Err(_) => warn("No nginx configuration found"),
-            }
-        }
+        NginxAction::Show => match nginx::get_config(&config) {
+            Ok(content) => println!("{}", content),
+            Err(_) => warn("No nginx configuration found"),
+        },
     }
 
     Ok(())
@@ -307,19 +308,23 @@ pub async fn services(action: ServicesAction) -> Result<()> {
                     warn(&format!("Failed to generate nginx config: {}", e));
                 }
             }
-            
+
             match services::start_shared_services(&config, &docker).await {
                 Ok(_) => success("Started shared services"),
                 Err(e) => {
                     let err_str = e.to_string();
                     error(&format!("Failed to start services: {}", e));
-                    
+
                     // Check for common issues and provide helpful messages
-                    if err_str.contains("port is already allocated") || err_str.contains("address already in use") {
+                    if err_str.contains("port is already allocated")
+                        || err_str.contains("address already in use")
+                    {
                         println!();
                         warn("A port conflict was detected. This usually means:");
                         println!("  1. Another service is using the port, OR");
-                        println!("  2. An old scratchpad container exists with different port settings");
+                        println!(
+                            "  2. An old scratchpad container exists with different port settings"
+                        );
                         println!();
                         info("To fix, try one of:");
                         println!("  • Change the port in scratchpad.toml");
@@ -348,7 +353,7 @@ pub async fn services(action: ServicesAction) -> Result<()> {
         }
         ServicesAction::Clean { force } => {
             let containers = docker.list_shared_service_containers().await?;
-            
+
             if containers.is_empty() {
                 info("No shared service containers to clean");
                 return Ok(());
@@ -361,7 +366,7 @@ pub async fn services(action: ServicesAction) -> Result<()> {
                     println!("  • {} ({})", name, c.state);
                 }
                 println!();
-                
+
                 if !confirm("Are you sure you want to remove these containers?")? {
                     info("Cancelled");
                     return Ok(());
@@ -369,7 +374,11 @@ pub async fn services(action: ServicesAction) -> Result<()> {
             }
 
             let removed = services::clean_shared_services(&docker).await?;
-            success(&format!("Removed {} service container(s): {}", removed.len(), removed.join(", ")));
+            success(&format!(
+                "Removed {} service container(s): {}",
+                removed.len(),
+                removed.join(", ")
+            ));
             println!();
             info("Run 'scratchpad services start' to recreate with current config");
         }
@@ -377,12 +386,12 @@ pub async fn services(action: ServicesAction) -> Result<()> {
             info("Restarting shared services...");
             services::stop_shared_services(&config, &docker).await?;
             services::start_shared_services(&config, &docker).await?;
-            
+
             // Also start nginx if enabled
             if config.nginx.enabled {
                 start_nginx_if_needed(&config, &docker).await?;
             }
-            
+
             success("Restarted shared services");
         }
     }
@@ -400,7 +409,7 @@ pub async fn update(name: &str, restart: bool) -> Result<()> {
     match scratch::update_scratch(&config, &docker, name).await {
         Ok(()) => {
             success(&format!("Updated scratch: {}", name));
-            
+
             if restart {
                 info("Restarting scratch...");
                 scratch::restart_scratch(&config, &docker, name).await?;
@@ -408,7 +417,7 @@ pub async fn update(name: &str, restart: bool) -> Result<()> {
             } else {
                 info("Run 'scratchpad restart <name>' to apply changes");
             }
-            
+
             Ok(())
         }
         Err(e) => {
@@ -421,46 +430,50 @@ pub async fn update(name: &str, restart: bool) -> Result<()> {
 /// Configuration management commands
 pub async fn config(action: ConfigAction) -> Result<()> {
     use crate::cli::ConfigAction;
-    
+
     match action {
         ConfigAction::Check => {
             println!("{}  Validating configuration...", "→".blue());
-            
+
             match config::load_config() {
                 Ok(cfg) => {
                     success("Configuration is valid");
                     println!();
-                    
+
                     // Show summary
                     println!("{}:", "Services".bold());
-                    let shared: Vec<_> = cfg.services.iter()
+                    let shared: Vec<_> = cfg
+                        .services
+                        .iter()
                         .filter(|(_, s)| s.shared)
                         .map(|(n, _)| n.as_str())
                         .collect();
-                    let per_scratch: Vec<_> = cfg.services.iter()
+                    let per_scratch: Vec<_> = cfg
+                        .services
+                        .iter()
                         .filter(|(_, s)| !s.shared)
                         .map(|(n, _)| n.as_str())
                         .collect();
-                    
+
                     if !shared.is_empty() {
                         println!("  Shared: {}", shared.join(", "));
                     }
                     if !per_scratch.is_empty() {
                         println!("  Per-scratch: {}", per_scratch.join(", "));
                     }
-                    
+
                     println!();
                     println!("{}:", "Nginx".bold());
                     println!("  Enabled: {}", cfg.nginx.enabled);
                     if cfg.nginx.enabled {
                         println!("  Domain: {}", cfg.nginx.domain);
                     }
-                    
+
                     println!();
                     println!("{}:", "Docker".bold());
                     println!("  Socket: {}", cfg.docker.socket);
                     println!("  Network: {}", cfg.docker.network);
-                    
+
                     // Validate services have required fields
                     let mut warnings = Vec::new();
                     for (name, svc) in &cfg.services {
@@ -468,10 +481,13 @@ pub async fn config(action: ConfigAction) -> Result<()> {
                             warnings.push(format!("Service '{}' has no image specified", name));
                         }
                         if !svc.shared && svc.port.is_none() {
-                            warnings.push(format!("Per-scratch service '{}' has no port - it won't be accessible", name));
+                            warnings.push(format!(
+                                "Per-scratch service '{}' has no port - it won't be accessible",
+                                name
+                            ));
                         }
                     }
-                    
+
                     if !warnings.is_empty() {
                         println!();
                         warn("Warnings:");
@@ -485,21 +501,21 @@ pub async fn config(action: ConfigAction) -> Result<()> {
                     return Err(anyhow::anyhow!("{}", e));
                 }
             }
-            
+
             Ok(())
         }
         ConfigAction::Show => {
             let config_path = std::path::Path::new("scratchpad.toml");
-            
+
             if !config_path.exists() {
                 error("No scratchpad.toml found in current directory");
                 info("Run 'scratchpad setup' to create one");
                 return Ok(());
             }
-            
+
             let content = fs::read_to_string(config_path)?;
             println!("{}", content);
-            
+
             Ok(())
         }
     }
@@ -548,13 +564,11 @@ async fn get_docker_client(config: &Config) -> Result<DockerClient> {
             }
             Ok(client)
         }
-        Err(e) => {
-            Err(anyhow::anyhow!(
-                "Failed to initialize Docker client for socket {}: {}",
-                config.docker.socket,
-                e
-            ))
-        }
+        Err(e) => Err(anyhow::anyhow!(
+            "Failed to initialize Docker client for socket {}: {}",
+            config.docker.socket,
+            e
+        )),
     }
 }
 
@@ -571,7 +585,10 @@ pub async fn doctor() -> Result<()> {
             success("Configuration file found and valid");
             println!("    Location: scratchpad.toml");
             println!("    Docker socket: {}", config.docker.socket);
-            println!("    Releases directory: {}", config.server.releases_dir.display());
+            println!(
+                "    Releases directory: {}",
+                config.server.releases_dir.display()
+            );
 
             // 2. Check Docker connection
             println!();
@@ -579,11 +596,14 @@ pub async fn doctor() -> Result<()> {
             match get_docker_client(&config).await {
                 Ok(docker) => {
                     success("Docker connection successful");
-                    
+
                     // Try to list containers
                     match docker.inner().list_containers::<&str>(None).await {
                         Ok(containers) => {
-                            success(&format!("Docker API working ({} containers found)", containers.len()));
+                            success(&format!(
+                                "Docker API working ({} containers found)",
+                                containers.len()
+                            ));
                         }
                         Err(e) => {
                             error(&format!("Failed to list containers: {}", e));
@@ -599,7 +619,10 @@ pub async fn doctor() -> Result<()> {
                     println!("    3. You have permissions to access the socket");
                     println!();
                     println!("  {} Try these commands:", "💡".blue());
-                    println!("    - Check if socket exists: ls -la {}", config.docker.socket);
+                    println!(
+                        "    - Check if socket exists: ls -la {}",
+                        config.docker.socket
+                    );
                     println!("    - Check if Docker is running: docker ps");
                     println!("    - Check permissions: id (verify you're in docker group)");
                 }
@@ -631,7 +654,10 @@ pub async fn doctor() -> Result<()> {
             if config.nginx.enabled {
                 println!();
                 println!("{}  Checking nginx...", "→".blue());
-                success(&format!("Nginx enabled for domain: {}", config.nginx.domain));
+                success(&format!(
+                    "Nginx enabled for domain: {}",
+                    config.nginx.domain
+                ));
             }
 
             println!();

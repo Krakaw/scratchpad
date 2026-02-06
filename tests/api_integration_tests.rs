@@ -86,6 +86,7 @@ fn test_config_with_services() {
         image: "postgres:15".to_string(),
         shared: true,
         port: Some(5432),
+        internal_port: None,
         env: {
             let mut map = HashMap::new();
             map.insert("POSTGRES_PASSWORD".to_string(), "password".to_string());
@@ -126,6 +127,7 @@ fn test_service_name_validation() {
                 image: format!("{}:latest", service),
                 shared: true,
                 port: None,
+                internal_port: None,
                 env: Default::default(),
                 volumes: vec![],
                 healthcheck: None,
@@ -180,6 +182,8 @@ fn test_config_nginx_config_update() {
         domain: "api.example.com".to_string(),
         routing: NginxRouting::Path,
         container: Some("nginx".to_string()),
+        dynamic: None,
+        ingress_service: None,
     };
 
     config.nginx = new_nginx_config;

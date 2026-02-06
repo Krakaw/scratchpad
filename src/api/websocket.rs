@@ -100,11 +100,7 @@ impl WsBroadcastHub {
     /// 1. All subscriptions for a client use clones of the same Sender
     /// 2. When a client disconnects, its Sender is dropped, making it closed
     /// 3. cleanup() will remove all closed senders
-    pub async fn unsubscribe(
-        &self,
-        channel: &str,
-        _tx: &tokio::sync::mpsc::Sender<ServerMessage>,
-    ) {
+    pub async fn unsubscribe(&self, channel: &str, _tx: &tokio::sync::mpsc::Sender<ServerMessage>) {
         let mut subs = self.subscribers.write().await;
         if let Some(channels) = subs.get_mut(channel) {
             // Remove all closed senders
@@ -193,42 +189,40 @@ async fn handle_socket(socket: WebSocket, state: SharedState) {
     // Handle incoming messages from client
     while let Some(Ok(msg)) = receiver.next().await {
         match msg {
-            Message::Text(text) => {
-                match serde_json::from_str::<ClientMessage>(&text) {
-                    Ok(ClientMessage::Subscribe { channels }) => {
-                        for channel in &channels {
-                            hub.subscribe(channel, tx.clone()).await;
-                            subscribed_channels.push(channel.clone());
-                        }
-                        let _ = tx
-                            .send(ServerMessage::Subscribed {
-                                channels: channels.clone(),
-                            })
-                            .await;
+            Message::Text(text) => match serde_json::from_str::<ClientMessage>(&text) {
+                Ok(ClientMessage::Subscribe { channels }) => {
+                    for channel in &channels {
+                        hub.subscribe(channel, tx.clone()).await;
+                        subscribed_channels.push(channel.clone());
                     }
-                    Ok(ClientMessage::Unsubscribe { channels }) => {
-                        for channel in &channels {
-                            hub.unsubscribe(channel, &tx).await;
-                            subscribed_channels.retain(|c| c != channel);
-                        }
-                        let _ = tx
-                            .send(ServerMessage::Unsubscribed {
-                                channels: channels.clone(),
-                            })
-                            .await;
-                    }
-                    Ok(ClientMessage::Ping) => {
-                        let _ = tx.send(ServerMessage::Pong).await;
-                    }
-                    Err(e) => {
-                        let _ = tx
-                            .send(ServerMessage::Error {
-                                message: format!("Invalid message: {}", e),
-                            })
-                            .await;
-                    }
+                    let _ = tx
+                        .send(ServerMessage::Subscribed {
+                            channels: channels.clone(),
+                        })
+                        .await;
                 }
-            }
+                Ok(ClientMessage::Unsubscribe { channels }) => {
+                    for channel in &channels {
+                        hub.unsubscribe(channel, &tx).await;
+                        subscribed_channels.retain(|c| c != channel);
+                    }
+                    let _ = tx
+                        .send(ServerMessage::Unsubscribed {
+                            channels: channels.clone(),
+                        })
+                        .await;
+                }
+                Ok(ClientMessage::Ping) => {
+                    let _ = tx.send(ServerMessage::Pong).await;
+                }
+                Err(e) => {
+                    let _ = tx
+                        .send(ServerMessage::Error {
+                            message: format!("Invalid message: {}", e),
+                        })
+                        .await;
+                }
+            },
             Message::Close(_) => break,
             _ => {}
         }
@@ -296,19 +290,19 @@ mod tests {
 
         // Drop the sender to mark it as closed, but keep tx_ref valid
         let tx_ref = &tx;
-        
+
         // Unsubscribe while tx_ref is still valid
         hub.unsubscribe("test", tx_ref).await;
-        
+
         // Now drop tx
         drop(tx);
-        
+
         let channels = hub.get_channels().await;
         // After unsubscribe removes closed senders and the channel is empty,
         // the channel itself should be removed (but tx is still alive here, so it won't be removed yet)
         // Let's actually test that unsubscribe works by dropping the tx before checking
     }
-    
+
     #[tokio::test]
     async fn test_broadcast_hub_cleanup() {
         let hub = WsBroadcastHub::new();
@@ -320,7 +314,7 @@ mod tests {
             hub.subscribe("test", tx2.clone()).await;
             let channels = hub.get_channels().await;
             assert!(channels.contains(&"test".to_string()));
-            
+
             // tx1 and tx2 go out of scope here, dropping all references
         }
 

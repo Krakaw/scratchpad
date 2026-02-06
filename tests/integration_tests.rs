@@ -1,5 +1,5 @@
 //! Integration tests for Scratchpad
-//! 
+//!
 //! These tests require Docker to be running
 
 use scratchpad::config::{Config, DockerConfig};
@@ -14,9 +14,9 @@ async fn test_docker_client_creation() {
         network: config.docker.network.clone(),
         label_prefix: config.docker.label_prefix.clone(),
     };
-    
+
     let client = DockerClient::new(docker_config).expect("Failed to create Docker client");
-    
+
     // Verify we can interact with Docker by getting simple info
     // In real implementation, this would call Docker API
     println!("Docker client created successfully");
@@ -31,11 +31,14 @@ async fn test_docker_network_creation() {
         network: config.docker.network.clone(),
         label_prefix: config.docker.label_prefix.clone(),
     };
-    
+
     let client = DockerClient::new(docker_config).expect("Failed to create Docker client");
-    
+
     // Test network creation
-    client.ensure_network().await.expect("Failed to ensure network");
+    client
+        .ensure_network()
+        .await
+        .expect("Failed to ensure network");
     println!("Network created successfully");
 }
 
@@ -48,16 +51,16 @@ async fn test_scratch_lifecycle() {
         network: config.docker.network.clone(),
         label_prefix: config.docker.label_prefix.clone(),
     };
-    
+
     let client = DockerClient::new(docker_config).expect("Failed to create Docker client");
-    
+
     // Test complete scratch lifecycle
     // 1. Create
     // 2. List
     // 3. Start
     // 4. Stop
     // 5. Delete
-    
+
     println!("Scratch lifecycle test completed");
 }
 

@@ -143,12 +143,14 @@ pub fn render_template(config: &Config, scratch: &Scratch) -> Result<String> {
 }
 
 /// Load a custom template from a file
+#[allow(dead_code)]
 pub fn load_custom_template(path: &std::path::Path) -> Result<String> {
     let content = std::fs::read_to_string(path)?;
     Ok(content)
 }
 
 /// Render a custom template
+#[allow(dead_code)]
 pub fn render_custom_template(
     template_content: &str,
     config: &Config,
