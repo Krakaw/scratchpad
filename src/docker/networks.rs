@@ -1,6 +1,6 @@
 //! Docker network management
 
-use bollard::network::CreateNetworkOptions;
+use bollard::models::{NetworkConnectRequest, NetworkCreateRequest, NetworkDisconnectRequest};
 use std::collections::HashMap;
 
 use super::DockerClient;
@@ -14,7 +14,7 @@ impl DockerClient {
         // Check if network exists
         if self
             .inner()
-            .inspect_network::<String>(network_name, None)
+            .inspect_network(network_name, None)
             .await
             .is_ok()
         {
@@ -25,42 +25,38 @@ impl DockerClient {
         // Create the network
         tracing::info!("Creating network: {}", network_name);
 
-        let options = CreateNetworkOptions {
-            name: network_name.as_str(),
-            driver: "bridge",
+        let config = NetworkCreateRequest {
+            name: network_name.clone(),
+            driver: Some("bridge".to_string()),
             ..Default::default()
         };
 
-        self.inner().create_network(options).await?;
+        self.inner().create_network(config).await?;
         Ok(())
     }
 
     /// Connect a container to the scratchpad network
     pub async fn connect_to_network(&self, container_id: &str) -> Result<()> {
-        use bollard::network::ConnectNetworkOptions;
-
-        let options = ConnectNetworkOptions {
-            container: container_id,
-            endpoint_config: Default::default(),
+        let config = NetworkConnectRequest {
+            container: container_id.to_string(),
+            endpoint_config: None,
         };
 
         self.inner()
-            .connect_network(&self.config().network, options)
+            .connect_network(&self.config().network, config)
             .await?;
         Ok(())
     }
 
     /// Disconnect a container from the scratchpad network
     pub async fn disconnect_from_network(&self, container_id: &str) -> Result<()> {
-        use bollard::network::DisconnectNetworkOptions;
-
-        let options = DisconnectNetworkOptions {
-            container: container_id,
-            force: true,
+        let config = NetworkDisconnectRequest {
+            container: container_id.to_string(),
+            force: Some(true),
         };
 
         self.inner()
-            .disconnect_network(&self.config().network, options)
+            .disconnect_network(&self.config().network, config)
             .await?;
         Ok(())
     }
@@ -69,7 +65,7 @@ impl DockerClient {
     pub async fn list_network_containers(&self) -> Result<Vec<String>> {
         let network = self
             .inner()
-            .inspect_network::<String>(&self.config().network, None)
+            .inspect_network(&self.config().network, None)
             .await?;
 
         let containers: Vec<String> = network
