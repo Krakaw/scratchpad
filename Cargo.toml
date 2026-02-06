@@ -52,7 +52,7 @@ uuid = { version = "1", features = ["v4", "serde"] }
 # Authentication & Session
 jsonwebtoken = { version = "10", features = ["rust_crypto"] }
 bcrypt = "0.15"
-rand = "0.8"
+rand = "0.9"
 
 # Static file embedding
 rust-embed = "8"
