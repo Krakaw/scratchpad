@@ -63,7 +63,7 @@ rust-embed = "8"
 comfy-table = "7"
 colored = "2"
 indicatif = "0.17"
-dialoguer = { version = "0.11", features = ["fuzzy-select"] }
+dialoguer = { version = "0.12", features = ["fuzzy-select"] }
 console = "0.16"
 
 # HTTP client (for webhooks)
