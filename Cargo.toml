@@ -61,7 +61,7 @@ rust-embed = "8"
 
 # Terminal output
 comfy-table = "7"
-colored = "2"
+colored = "3"
 indicatif = "0.17"
 dialoguer = { version = "0.12", features = ["fuzzy-select"] }
 console = "0.16"
