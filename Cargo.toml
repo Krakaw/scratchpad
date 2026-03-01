@@ -71,7 +71,7 @@ reqwest = { version = "0.13", features = ["json"] }
 
 [dev-dependencies]
 tempfile = "3"
-criterion = { version = "0.5", features = ["html_reports"] }
+criterion = { version = "0.8", features = ["html_reports"] }
 
 [[bench]]
 name = "scratch_benchmarks"
