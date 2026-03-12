@@ -178,7 +178,7 @@ async fn handle_socket(socket: WebSocket, state: SharedState) {
             while let Some(msg) = rx.recv().await {
                 if let Ok(json) = serde_json::to_string(&msg) {
                     let mut s = sender.lock().await;
-                    if s.send(Message::Text(json)).await.is_err() {
+                    if s.send(Message::Text(json.into())).await.is_err() {
                         break;
                     }
                 }
